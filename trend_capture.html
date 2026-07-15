@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TREND CAPTURE — 관측 입력</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+/* ============ CONFIG ============
+   1) SETUP.md(또는 채팅 안내)의 Apps Script를 구글시트에 붙여넣고 웹 앱으로 배포
+   2) 아래 WEBAPP_URL 에 …/exec URL 붙여넣기 (또는 페이지 안 ⚙ 설정에서 입력해도 됨)
+================================== */
+</style>
+<style>
+:root{
+  --bg:#FFFFFF; --panel:#FFFFFF; --panel-2:#F4F4F6; --border:#E7E7EA;
+  --text:#1A1A1A; --muted:#767680; --dim:#B0B0B8;
+  --emerging:#4C7EFF; --rising:#FF6B4A; --link:#B15CFF;
+  --mono:'Jua',sans-serif; --disp:'Jua',sans-serif; --body:'Jua',sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;}
+
+.topbar{padding:26px 32px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.brand-eyebrow{font-family:var(--disp);font-size:14px;letter-spacing:.06em;color:var(--rising);margin-bottom:6px;}
+.brand-title{font-family:var(--disp);font-size:34px;color:var(--text);}
+.backlink{font-family:var(--body);font-weight:700;font-size:15px;color:var(--muted);text-decoration:none;}
+.backlink:hover{color:var(--text);}
+.btn{font-family:var(--disp);font-size:15px;padding:11px 18px;border-radius:12px;border:2px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;}
+.btn:hover{border-color:var(--muted);}
+.btn.primary{background:var(--rising);border-color:var(--rising);color:#FFFFFF;width:100%;padding:16px;font-size:20px;margin-top:20px;box-shadow:0 4px 0 #E2502F;}
+.btn.primary:hover{opacity:.92;}
+.btn.primary:active{transform:translateY(2px);box-shadow:0 2px 0 #E2502F;}
+.btn.primary:disabled{opacity:.5;cursor:default;}
+
+.wrap{max-width:1060px;margin:0 auto;padding:32px;}
+
+/* ---------- Entry shell (screenshot-style) ---------- */
+.entry-shell{display:grid;grid-template-columns:380px 1fr;background:var(--panel);border:2px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.04);}
+@media(max-width:760px){.entry-shell{grid-template-columns:1fr;}}
+
+.entry-image{background:var(--panel-2);display:flex;flex-direction:column;}
+.image-url-row{padding:14px;border-bottom:2px solid var(--border);}
+.image-url-row input{width:100%;background:#FFFFFF;border:2px solid var(--border);color:var(--text);font-family:var(--body);font-size:14px;padding:10px 12px;border-radius:10px;}
+.image-preview{flex:1;min-height:340px;display:flex;align-items:center;justify-content:center;background:var(--panel-2);position:relative;}
+.image-preview img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
+.image-empty{color:var(--dim);font-family:var(--body);font-size:15px;text-align:center;padding:20px;z-index:1;line-height:1.6;}
+
+.entry-panel{padding:28px 30px;}
+.eyebrow-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.eyebrow-row select{background:var(--panel-2);border:2px solid var(--border);border-radius:10px;color:var(--rising);font-family:var(--disp);font-size:15px;padding:6px 10px;cursor:pointer;}
+.eyebrow-row .sep{color:var(--dim);font-size:14px;}
+.eyebrow-row input.observer{background:var(--panel-2);border:2px solid var(--border);border-radius:10px;color:var(--muted);font-family:var(--body);font-size:14px;width:110px;padding:6px 10px;}
+.title-input{width:100%;background:none;border:none;color:var(--text);font-family:var(--disp);font-size:32px;padding:10px 0 20px;border-bottom:2px solid var(--border);margin-bottom:6px;}
+.title-input::placeholder{color:var(--dim);}
+.title-input:focus{outline:none;}
+
+.spec-row{display:grid;grid-template-columns:130px 1fr;align-items:center;padding:14px 0;border-bottom:2px solid var(--border);gap:10px;}
+.spec-label{font-family:var(--disp);font-size:15px;color:var(--muted);}
+.spec-row input[type=text]{width:100%;background:none;border:none;color:var(--text);font-family:var(--body);font-size:16px;padding:6px 0;}
+.spec-row input[type=text]:focus{outline:none;}
+.spec-row select{width:100%;background:none;border:none;color:var(--text);font-family:var(--body);font-size:16px;padding:6px 0;cursor:pointer;}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;}
+.tchip{font-family:var(--disp);font-size:14px;padding:7px 14px;border-radius:999px;border:2px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;}
+.tchip.on{background:var(--text);color:#FFFFFF;border-color:var(--text);}
+.tchip.brand.on{background:var(--emerging);border-color:var(--emerging);color:#FFFFFF;}
+.tchip.flag.on{background:var(--rising);border-color:var(--rising);color:#FFFFFF;}
+
+.memo-row{margin-top:16px;}
+.memo-row textarea{width:100%;background:var(--panel-2);border:2px solid var(--border);color:var(--text);font-family:var(--body);font-size:16px;padding:12px;border-radius:14px;min-height:70px;resize:vertical;}
+.memo-row label{font-family:var(--disp);font-size:15px;color:var(--muted);display:block;margin-bottom:8px;}
+
+.origlink{display:inline-block;margin-top:16px;font-family:var(--disp);font-size:15px;color:var(--rising);text-decoration:none;}
+.origlink:hover{text-decoration:underline;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);border:none;color:#FFFFFF;
+  font-family:var(--disp);font-size:15px;padding:14px 22px;border-radius:14px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,0.15);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--rising);}
+
+.section-label{font-family:var(--disp);font-size:18px;color:var(--muted);margin:38px 0 16px;}
+.recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
+.rcard{background:var(--panel);border:2px solid var(--border);border-radius:16px;overflow:hidden;}
+.rcard .thumb{height:130px;background:var(--panel-2);}
+.rcard .thumb img{width:100%;height:100%;object-fit:cover;}
+.rcard .body{padding:12px 14px;}
+.rcard .rc-cat{font-family:var(--disp);font-size:13px;color:var(--rising);}
+.rcard .rc-title{font-family:var(--disp);font-size:16px;margin-top:3px;}
+.empty-recent{color:var(--dim);font-family:var(--body);font-size:15px;padding:20px 0;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.overlay.show{display:flex;}
+.modal{background:var(--panel);border:2px solid var(--border);border-radius:20px;max-width:480px;width:100%;padding:28px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,0.12);}
+.modal-close{position:absolute;top:18px;right:18px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+.modal h2{font-family:var(--disp);font-size:24px;margin:0 0 14px;color:var(--text);}
+.modal label{font-family:var(--disp);font-size:15px;color:var(--muted);}
+.modal input{width:100%;background:var(--panel-2);border:2px solid var(--border);color:var(--text);font-family:var(--body);font-size:14px;padding:11px;border-radius:12px;margin:6px 0 16px;}
+.modal p{font-family:var(--body);font-size:14px;color:var(--dim);line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="brand-eyebrow">F&amp;F Consumer Strategy · Trend Agent</div>
+    <div class="brand-title">TREND CAPTURE</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a class="backlink" href="./trend_signal_dashboard.html">← 시그널 대시보드로</a>
+    <button class="btn" id="configBtn">⚙ 연동 설정</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="entry-shell">
+    <div class="entry-image">
+      <div class="image-url-row">
+        <input id="imgUrlInput" placeholder="이미지 URL 붙여넣기 (또는 아래에서 파일 선택)">
+        <label for="imgFileInput" style="display:block;margin-top:8px;text-align:center;padding:9px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;">
+          📎 URL이 없다면 여기서 사진 파일 선택 (자동으로 드라이브에 업로드됨)
+        </label>
+        <input type="file" id="imgFileInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="image-preview" id="imagePreview">
+        <div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>
+      </div>
+    </div>
+
+    <div class="entry-panel">
+      <div class="eyebrow-row">
+        <select id="domainSelect"></select>
+        <span class="sep">/</span>
+        <select id="catSelect"></select>
+        <span class="sep">·</span>
+        <input class="observer" id="observerInput" placeholder="관측자명">
+      </div>
+      <input class="title-input" id="kwInput" placeholder="키워드 / 아이템명 (예: 크레이프솔 데저트부츠)">
+
+      <div class="spec-row">
+        <div class="spec-label">서브카테고리</div>
+        <div>
+          <input type="text" id="subInput" placeholder="실루엣 · 소재 · 브랜드계보 등">
+          <select id="subSelect" style="display:none;"></select>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">발견채널</div>
+        <input type="text" id="chInput" placeholder="예: 인스타 @xxxx, 샤오홍슈, 편집숍명">
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">소스타입</div>
+        <div class="chiprow" id="srcChips">
+          <button class="tchip on" data-val="니치">니치</button>
+          <button class="tchip" data-val="메인스트림">메인스트림</button>
+        </div>
+      </div>
+      <div class="spec-row" id="brandRow">
+        <div class="spec-label">브랜드태그</div>
+        <div class="chiprow" id="brandChips">
+          <button class="tchip brand-all on" data-val="전체">✓ 전체</button>
+          <button class="tchip brand" data-val="MLB">MLB</button>
+          <button class="tchip brand" data-val="ST">ST</button>
+          <button class="tchip brand" data-val="Discovery">Discovery</button>
+          <button class="tchip brand" data-val="Duvetica">Duvetica</button>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">해시태그</div>
+        <input type="text" id="hashtagInput" placeholder="#multisensory #hyperlocal #PopUp (띄어쓰기로 구분)">
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">정량신호</div>
+        <input type="text" id="quantInput" placeholder="예: 리셀가 15% 상승, 좋아요 2배 증가">
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">출처링크</div>
+        <input type="text" id="sourceLinkInput" placeholder="원본 게시물/기사 URL (선택)">
+      </div>
+      <div class="spec-row" style="border-bottom:none;">
+        <div class="spec-label">기존 언급</div>
+        <div>
+          <div class="chiprow">
+            <button class="tchip flag" id="mainstreamChip">이미 리포트에 언급됨</button>
+          </div>
+          <div style="font-size:10px;color:var(--dim);margin-top:6px;">확실할 때만 체크하세요. 모르면 비워둬도 됩니다 — 담당자가 관리하는 목록과 자동으로 대조됩니다.</div>
+        </div>
+      </div>
+
+      <div class="memo-row">
+        <label>메모 — 왜 뜬다고 보는지</label>
+        <textarea id="memoInput" placeholder="정성적으로 자유롭게 기술"></textarea>
+      </div>
+
+      <a class="origlink" id="origLink" href="#" target="_blank" rel="noopener" style="display:none;">원본 이미지 열기 ↗</a>
+
+      <button class="btn primary" id="saveBtn">이 관측 저장</button>
+    </div>
+  </div>
+
+  <div class="section-label">최근 저장한 관측 (이번 세션)</div>
+  <div class="recent-grid" id="recentGrid"><div class="empty-recent">아직 저장한 항목이 없습니다.</div></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="configOverlay">
+  <div class="modal">
+    <button class="modal-close" id="configClose">✕</button>
+    <h2>구글시트 연동 설정</h2>
+    <p>Apps Script 웹 앱 배포 후 나온 URL(…/exec)을 붙여넣으세요. 채팅에서 안내한 스크립트를 시트에 먼저 붙여넣고 배포해야 합니다.</p>
+    <label>Web App URL</label>
+    <input id="webappInput" placeholder="https://script.google.com/macros/s/xxxx/exec">
+    <label>시트 탭 이름</label>
+    <input id="sheetNameInput" placeholder="아이템시그널" value="아이템시그널">
+    <button class="btn primary" id="webappSaveBtn" style="margin-top:4px;">저장</button>
+  </div>
+</div>
+
+<script>
+let WEBAPP_URL = "";
+let SHEET_NAME = "아이템시그널";
+let selSrc = "니치";
+let selBrands = new Set();
+let mainstreamFlag = false;
+let recent = [];
+
+const DOMAIN_CATS = {
+  "패션&뷰티": ["의류","신발","ACC","뷰티","기타"],
+  "F&B": ["카페·디저트","레스토랑","주류·음료","델리·프로덕트","기타"],
+  "공간": ["리테일·팝업","전시·편집숍","호스피탈리티","오피스·워크스페이스","기타"],
+  "라이프스타일": ["여가·취미","소비태도","가치관","문화현상","여행","기타"]
+};
+const CATEGORY_SUBS = {
+  "의류": ["아우터","상의","하의","원피스/스커트"],
+  "ACC": ["가방","모자"]
+};
+
+function populateDomains(){
+  const sel = document.getElementById("domainSelect");
+  sel.innerHTML = Object.keys(DOMAIN_CATS).map(d=>`<option value="${d}">${d}</option>`).join("");
+}
+function populateCats(domain){
+  const sel = document.getElementById("catSelect");
+  sel.innerHTML = DOMAIN_CATS[domain].map(c=>`<option value="${c}">${c}</option>`).join("");
+  updateSubField();
+}
+function updateSubField(){
+  const cat = document.getElementById("catSelect").value;
+  const subs = CATEGORY_SUBS[cat];
+  const subSelect = document.getElementById("subSelect");
+  const subInput = document.getElementById("subInput");
+  if(subs){
+    subSelect.innerHTML = subs.map(s=>`<option value="${s}">${s}</option>`).join("");
+    subSelect.style.display = "block";
+    subInput.style.display = "none";
+  } else {
+    subSelect.style.display = "none";
+    subInput.style.display = "block";
+  }
+}
+function toggleBrandRow(domain){
+  const isFashion = domain === "패션&뷰티";
+  document.getElementById("brandRow").style.display = isFashion ? "grid" : "none";
+  if(!isFashion){
+    selBrands.clear();
+    document.querySelectorAll("#brandChips .tchip.brand").forEach(b=>b.classList.remove("on"));
+    document.querySelector("#brandChips .tchip.brand-all").classList.add("on");
+  }
+}
+populateDomains();
+populateCats(Object.keys(DOMAIN_CATS)[0]);
+toggleBrandRow(Object.keys(DOMAIN_CATS)[0]);
+document.getElementById("domainSelect").onchange = e=>{ populateCats(e.target.value); toggleBrandRow(e.target.value); };
+document.getElementById("catSelect").onchange = updateSubField;
+
+const $ = id => document.getElementById(id);
+let pendingImageBase64 = null, pendingImageMime = "", pendingImageName = "";
+
+function resizeImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxW = 1200;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+$("imgUrlInput").addEventListener("input", e=>{
+  const url = e.target.value.trim();
+  const prev = $("imagePreview");
+  if(url){
+    pendingImageBase64 = null; $("imgFileInput").value = "";
+    prev.innerHTML = `<img src="${url}" alt="">`;
+    $("origLink").href = url; $("origLink").style.display = "inline-block";
+  } else if(!pendingImageBase64) {
+    prev.innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
+    $("origLink").style.display = "none";
+  }
+});
+
+$("imgFileInput").addEventListener("change", async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $("imgUrlInput").value = "";
+  $("origLink").style.display = "none";
+  $("imagePreview").innerHTML = `<div class="image-empty">사진 처리 중…</div>`;
+  try{
+    const dataUrl = await resizeImageFile(file);
+    pendingImageBase64 = dataUrl.split(",")[1];
+    pendingImageMime = "image/jpeg";
+    pendingImageName = (file.name||"capture").replace(/\.[^.]+$/,"") + ".jpg";
+    $("imagePreview").innerHTML = `<img src="${dataUrl}" alt="">`;
+    showToast("사진 준비 완료 · 저장 시 자동 업로드됩니다");
+  }catch(err){
+    showToast("사진 처리 실패 — 다른 파일로 시도해주세요", true);
+    $("imagePreview").innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
+  }
+});
+
+document.querySelectorAll("#srcChips .tchip").forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll("#srcChips .tchip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); selSrc = b.dataset.val;
+});
+document.querySelectorAll("#brandChips .tchip").forEach(b=> b.onclick = ()=>{
+  if(b.dataset.val === "전체"){
+    selBrands.clear();
+    document.querySelectorAll("#brandChips .tchip.brand").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+  } else {
+    document.querySelector('#brandChips .tchip.brand-all').classList.remove("on");
+    b.classList.toggle("on");
+    if(b.classList.contains("on")) selBrands.add(b.dataset.val); else selBrands.delete(b.dataset.val);
+    if(selBrands.size===0) document.querySelector('#brandChips .tchip.brand-all').classList.add("on");
+  }
+});
+$("mainstreamChip").onclick = ()=>{
+  mainstreamFlag = !mainstreamFlag;
+  $("mainstreamChip").classList.toggle("on", mainstreamFlag);
+};
+
+function showToast(msg, isErr){
+  const t = $("toast"); t.textContent = msg; t.className = "toast show" + (isErr?" err":"");
+  setTimeout(()=> t.classList.remove("show"), 2600);
+}
+
+function resetForm(){
+  ["kwInput","subInput","chInput","quantInput","sourceLinkInput","hashtagInput","memoInput","imgUrlInput"].forEach(id=> $(id).value="");
+  $("imgFileInput").value = "";
+  pendingImageBase64 = null; pendingImageMime = ""; pendingImageName = "";
+  $("imagePreview").innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
+  $("origLink").style.display = "none";
+  document.querySelectorAll("#brandChips .tchip.brand").forEach(b=>b.classList.remove("on"));
+  document.querySelector("#brandChips .tchip.brand-all").classList.add("on");
+  selBrands.clear();
+  mainstreamFlag = false; $("mainstreamChip").classList.remove("on");
+  document.querySelectorAll("#srcChips .tchip").forEach(x=>x.classList.remove("on"));
+  document.querySelector("#srcChips .tchip").classList.add("on"); selSrc="니치";
+}
+
+function renderRecent(){
+  const grid = $("recentGrid");
+  if(!recent.length){ grid.innerHTML = `<div class="empty-recent">아직 저장한 항목이 없습니다.</div>`; return; }
+  grid.innerHTML = recent.slice().reverse().map(r=>`
+    <div class="rcard">
+      <div class="thumb">${r.이미지URL?`<img src="${r.이미지URL}" alt="">`:""}</div>
+      <div class="body">
+        <div class="rc-cat">${r.도메인} · ${r.카테고리}</div>
+        <div class="rc-title">${r.키워드}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+$("saveBtn").onclick = async ()=>{
+  const kw = $("kwInput").value.trim();
+  if(!kw){ showToast("키워드/아이템명을 입력해주세요", true); return; }
+  const payload = {
+    sheetName: SHEET_NAME,
+    "키워드/아이템명": kw,
+    "도메인": $("domainSelect").value,
+    "카테고리": $("catSelect").value,
+    "서브카테고리": $("subSelect").style.display !== "none" ? $("subSelect").value : $("subInput").value.trim(),
+    "발견채널": $("chInput").value.trim(),
+    "소스타입": selSrc,
+    "관측자": $("observerInput").value.trim(),
+    "메모": $("memoInput").value.trim(),
+    "정량신호": $("quantInput").value.trim(),
+    "출처링크": $("sourceLinkInput").value.trim(),
+    "브랜드태그": $("domainSelect").value === "패션&뷰티" ? (selBrands.size ? [...selBrands].join(",") : "전체") : "공통",
+    "해시태그": $("hashtagInput").value.trim().split(/[\s,]+/).filter(Boolean).map(t=> t.startsWith("#")?t:"#"+t).join(","),
+    "기존리포트언급": mainstreamFlag ? "Y" : "N",
+    "이미지URL": pendingImageBase64 ? "" : $("imgUrlInput").value.trim()
+  };
+
+  if(!WEBAPP_URL){
+    showToast("먼저 ⚙ 설정에서 Web App URL을 연결해주세요", true);
+    $("configOverlay").classList.add("show");
+    return;
+  }
+
+  $("saveBtn").disabled = true; $("saveBtn").textContent = pendingImageBase64 ? "사진 업로드 중…" : "저장 중…";
+  try{
+    const fd = new FormData();
+    Object.entries(payload).forEach(([k,v])=> fd.append(k, v));
+    if(pendingImageBase64){
+      fd.append("imageBase64", pendingImageBase64);
+      fd.append("imageMime", pendingImageMime);
+      fd.append("imageName", pendingImageName);
+    }
+    await fetch(WEBAPP_URL, { method:"POST", body: fd, mode:"no-cors" });
+    // no-cors 응답은 읽을 수 없어 낙관적으로 성공 처리합니다.
+    recent.push({
+      키워드:payload["키워드/아이템명"], 도메인:payload["도메인"], 카테고리:payload["카테고리"],
+      이미지URL: pendingImageBase64 ? `data:${pendingImageMime};base64,${pendingImageBase64}` : payload["이미지URL"]
+    });
+    renderRecent();
+    showToast("저장했습니다 · 시트에서 확인해보세요 ✓");
+    resetForm();
+  }catch(err){
+    showToast("저장 실패 — 네트워크 또는 URL을 확인해주세요", true);
+  }finally{
+    $("saveBtn").disabled = false; $("saveBtn").textContent = "이 관측 저장";
+  }
+};
+
+$("configBtn").onclick = ()=>{
+  $("webappInput").value = WEBAPP_URL; $("sheetNameInput").value = SHEET_NAME;
+  $("configOverlay").classList.add("show");
+};
+$("configClose").onclick = ()=> $("configOverlay").classList.remove("show");
+$("configOverlay").onclick = e=>{ if(e.target.id==="configOverlay") e.currentTarget.classList.remove("show"); };
+$("webappSaveBtn").onclick = ()=>{
+  WEBAPP_URL = $("webappInput").value.trim();
+  SHEET_NAME = $("sheetNameInput").value.trim() || "아이템시그널";
+  $("configOverlay").classList.remove("show");
+  showToast("연동 설정 저장됨");
+};
+</script>
+</body>
+</html>
