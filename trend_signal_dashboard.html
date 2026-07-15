@@ -636,7 +636,7 @@ function render(){
       </div>
       <div class="card-meta">${i.domain} · ${i.cat}${i.sub?" · "+i.sub:""}</div>
       <div class="sparkwrap">${sparkSVG(i.weeks, tierColor(i.tier))}</div>
-      ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL).slice(-3).reverse(); return imgs.length?`<div class="thumb-strip">${imgs.map(o=>`<img src="${o.이미지URL}" loading="lazy" alt="">`).join("")}${i.obs.filter(o=>o.이미지URL).length>3?`<div class="thumb-more">+${i.obs.filter(o=>o.이미지URL).length-3}</div>`:""}</div>`:""; })()}
+      ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL).slice(-3).reverse(); return imgs.length?`<div class="thumb-strip">${imgs.map(o=>`<img src="${o.이미지URL}" loading="lazy" alt="" onerror="this.style.display='none'">`).join("")}${i.obs.filter(o=>o.이미지URL).length>3?`<div class="thumb-more">+${i.obs.filter(o=>o.이미지URL).length-3}</div>`:""}</div>`:""; })()}
       <div class="card-stats">
         <span><b>${i.obsCount}</b> 관측</span>
         <span><b>${i.sourceCount}</b> 소스</span>
@@ -668,7 +668,7 @@ function openDetail(kw){
     </div>
     ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL); return imgs.length?`
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-top:18px;">관측 이미지 (${imgs.length})</div>
-      <div class="gallery">${imgs.slice().reverse().map(o=>`<a href="${o.이미지URL}" target="_blank" rel="noopener"><img src="${o.이미지URL}" loading="lazy" alt=""><span class="gcap">${o.발견채널} · ${o.타임스탬프}</span></a>`).join("")}</div>
+      <div class="gallery">${imgs.slice().reverse().map(o=>`<a href="${o.이미지URL}" target="_blank" rel="noopener"><img src="${o.이미지URL}" loading="lazy" alt="" onerror="this.style.display='none'"><span class="gcap">${o.발견채널} · ${o.타임스탬프}</span></a>`).join("")}</div>
     `:""; })()}
     <div class="obs-list">
       ${i.obs.slice().reverse().map(o=>`
