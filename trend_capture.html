@@ -81,6 +81,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 
 .section-label{font-family:var(--disp);font-size:18px;color:var(--muted);margin:38px 0 16px;}
 .recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;}
+.tabbar{display:flex;gap:6px;padding:14px 32px 0;border-bottom:2px solid var(--border);}
+.tab-btn{font-family:var(--disp);font-size:16px;padding:10px 8px 12px;background:none;border:none;color:var(--dim);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--rising);}
+.view{display:none;}
+.view.active{display:block;}
+.month-row{display:flex;gap:10px;}
+.month-row input[type=month]{flex:1;background:none;border:none;color:var(--text);font-family:var(--body);font-size:15px;padding:6px 0;}
+.month-row label{font-family:var(--disp);font-size:12px;color:var(--dim);display:block;}
 .rcard{background:var(--panel);border:2px solid var(--border);border-radius:16px;overflow:hidden;}
 .rcard .thumb{height:130px;background:var(--panel-2);}
 .rcard .thumb img{width:100%;height:100%;object-fit:cover;}
@@ -112,7 +120,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
   </div>
 </div>
 
-<div class="wrap">
+<div class="tabbar">
+  <button class="tab-btn active" id="tabItemBtn">아이템 관측</button>
+  <button class="tab-btn" id="tabLifeBtn">라이프스타일 트렌드</button>
+</div>
+
+<div class="wrap view active" id="view-item">
 
   <div class="entry-shell">
     <div class="entry-image">
@@ -201,6 +214,75 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 
   <div class="section-label">최근 저장한 관측 (이번 세션)</div>
   <div class="recent-grid" id="recentGrid"><div class="empty-recent">아직 저장한 항목이 없습니다.</div></div>
+
+</div>
+
+<div class="wrap view" id="view-life">
+
+  <div class="entry-shell">
+    <div class="entry-image" style="display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div class="image-empty" style="text-align:center;line-height:1.8;">
+        📰<br>라이프스타일 트렌드는<br>사진보다 <b style="color:var(--text)">근거 소스(기사·링크)</b>가<br>핵심이라 이미지 없이 갑니다
+      </div>
+    </div>
+
+    <div class="entry-panel">
+      <div class="eyebrow-row">
+        <select id="lifeTypeSelect">
+          <option>소비태도</option><option>여가·취미</option><option>가치관</option><option>문화현상</option>
+        </select>
+        <span class="sep">·</span>
+        <input class="observer" id="lifeObserverInput" placeholder="관측자명">
+      </div>
+      <input class="title-input" id="lifeNameInput" placeholder="트렌드명 (예: 조용한 소비, 러닝 크루 문화)">
+
+      <div class="spec-row">
+        <div class="spec-label">방향</div>
+        <div class="chiprow" id="lifeDirChips">
+          <button class="tchip" data-val="확산중">확산중 ↑</button>
+          <button class="tchip on" data-val="정체">정체 →</button>
+          <button class="tchip" data-val="소강">소강 ↓</button>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">확신도</div>
+        <div class="chiprow" id="lifeConfChips">
+          <button class="tchip on" data-val="가설단계">가설단계</button>
+          <button class="tchip" data-val="교차확인">교차확인</button>
+          <button class="tchip" data-val="정착">정착</button>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">관련카테고리</div>
+        <input type="text" id="lifeCatInput" placeholder="신발, 아우터 등 콤마로 구분 (없으면 비워두기)">
+      </div>
+      <div class="spec-row" style="border-bottom:none;">
+        <div class="spec-label">연결아이템</div>
+        <input type="text" id="lifeLinkInput" placeholder="아이템시그널의 키워드명과 똑같이 입력하면 자동 연결됨">
+      </div>
+
+      <div class="memo-row">
+        <label>근거 소스 — 기사/링크/출처 (줄바꿈으로 여러 개 구분)</label>
+        <textarea id="lifeSourceInput" placeholder="예:&#10;네이버데이터랩 '무지출챌린지' 검색량 3개월 연속 상승&#10;https://news.example.com/article-link"></textarea>
+      </div>
+
+      <div class="month-row" style="margin-top:16px;">
+        <div>
+          <label>최초 포착월</label>
+          <input type="month" id="lifeFirstMonth">
+        </div>
+        <div>
+          <label>최근 재확인월</label>
+          <input type="month" id="lifeLastMonth">
+        </div>
+      </div>
+
+      <button class="btn primary" id="lifeSaveBtn">이 트렌드 저장</button>
+    </div>
+  </div>
+
+  <div class="section-label">최근 저장한 트렌드 (이번 세션)</div>
+  <div class="recent-grid" id="recentGridLife"><div class="empty-recent">아직 저장한 트렌드가 없습니다.</div></div>
 
 </div>
 
@@ -456,6 +538,96 @@ $("webappSaveBtn").onclick = ()=>{
   lsSet("trendCapture_sheetName", SHEET_NAME);
   $("configOverlay").classList.remove("show");
   showToast("연동 설정 저장됨");
+};
+
+/* ====================== 라이프스타일 트렌드 탭 ====================== */
+const SHEET_NAME_LIFE = "라이프스타일";
+let lifeDir = "정체", lifeConf = "가설단계";
+let recentLife = [];
+
+document.getElementById("tabItemBtn").onclick = ()=>{
+  document.getElementById("tabItemBtn").classList.add("active");
+  document.getElementById("tabLifeBtn").classList.remove("active");
+  document.getElementById("view-item").classList.add("active");
+  document.getElementById("view-life").classList.remove("active");
+};
+document.getElementById("tabLifeBtn").onclick = ()=>{
+  document.getElementById("tabLifeBtn").classList.add("active");
+  document.getElementById("tabItemBtn").classList.remove("active");
+  document.getElementById("view-life").classList.add("active");
+  document.getElementById("view-item").classList.remove("active");
+  if(!$("lifeLastMonth").value){
+    const now = new Date();
+    const ym = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+    $("lifeLastMonth").value = ym;
+    $("lifeFirstMonth").value = ym;
+  }
+};
+
+document.querySelectorAll("#lifeDirChips .tchip").forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll("#lifeDirChips .tchip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); lifeDir = b.dataset.val;
+});
+document.querySelectorAll("#lifeConfChips .tchip").forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); lifeConf = b.dataset.val;
+});
+
+function resetLifeForm(){
+  ["lifeNameInput","lifeCatInput","lifeLinkInput","lifeSourceInput"].forEach(id=> $(id).value="");
+  document.querySelectorAll("#lifeDirChips .tchip").forEach(x=>x.classList.remove("on"));
+  document.querySelector('#lifeDirChips .tchip[data-val="정체"]').classList.add("on"); lifeDir="정체";
+  document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
+  document.querySelector('#lifeConfChips .tchip[data-val="가설단계"]').classList.add("on"); lifeConf="가설단계";
+}
+
+function renderRecentLife(){
+  const grid = $("recentGridLife");
+  if(!recentLife.length){ grid.innerHTML = `<div class="empty-recent">아직 저장한 트렌드가 없습니다.</div>`; return; }
+  grid.innerHTML = recentLife.slice().reverse().map(r=>`
+    <div class="rcard">
+      <div class="body">
+        <div class="rc-cat">${r.유형} · ${r.방향}</div>
+        <div class="rc-title">${r.트렌드명}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+$("lifeSaveBtn").onclick = async ()=>{
+  const name = $("lifeNameInput").value.trim();
+  if(!name){ showToast("트렌드명을 입력해주세요", true); return; }
+  const payload = {
+    sheetName: SHEET_NAME_LIFE,
+    "트렌드명": name,
+    "유형": $("lifeTypeSelect").value,
+    "방향": lifeDir,
+    "확신도": lifeConf,
+    "관련카테고리": $("lifeCatInput").value.trim(),
+    "연결아이템태그": $("lifeLinkInput").value.trim(),
+    "근거소스": $("lifeSourceInput").value.trim(),
+    "최초포착월": $("lifeFirstMonth").value,
+    "최근재확인월": $("lifeLastMonth").value
+  };
+  if(!WEBAPP_URL){
+    showToast("먼저 ⚙ 설정에서 Web App URL을 연결해주세요", true);
+    $("configOverlay").classList.add("show");
+    return;
+  }
+  $("lifeSaveBtn").disabled = true; $("lifeSaveBtn").textContent = "저장 중…";
+  try{
+    const fd = new FormData();
+    Object.entries(payload).forEach(([k,v])=> fd.append(k, v));
+    await fetch(WEBAPP_URL, { method:"POST", body: fd, mode:"no-cors" });
+    recentLife.push(payload);
+    renderRecentLife();
+    showToast("저장했습니다 · 라이프스타일 시트에서 확인해보세요 ✓");
+    resetLifeForm();
+  }catch(err){
+    showToast("저장 실패 — 네트워크 또는 URL을 확인해주세요", true);
+  }finally{
+    $("lifeSaveBtn").disabled = false; $("lifeSaveBtn").textContent = "이 트렌드 저장";
+  }
 };
 </script>
 </body>
