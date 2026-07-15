@@ -253,8 +253,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
         </div>
       </div>
       <div class="spec-row">
-        <div class="spec-label">관련카테고리</div>
-        <input type="text" id="lifeCatInput" placeholder="신발, 아우터 등 콤마로 구분 (없으면 비워두기)">
+        <div class="spec-label">해시태그</div>
+        <input type="text" id="lifeHashtagInput" placeholder="#사우나 #웰니스 (띄어쓰기로 구분)">
       </div>
       <div class="spec-row" style="border-bottom:none;">
         <div class="spec-label">연결아이템</div>
@@ -574,7 +574,7 @@ document.querySelectorAll("#lifeConfChips .tchip").forEach(b=> b.onclick = ()=>{
 });
 
 function resetLifeForm(){
-  ["lifeNameInput","lifeCatInput","lifeLinkInput","lifeSourceInput"].forEach(id=> $(id).value="");
+  ["lifeNameInput","lifeHashtagInput","lifeLinkInput","lifeSourceInput"].forEach(id=> $(id).value="");
   document.querySelectorAll("#lifeDirChips .tchip").forEach(x=>x.classList.remove("on"));
   document.querySelector('#lifeDirChips .tchip[data-val="정체"]').classList.add("on"); lifeDir="정체";
   document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
@@ -603,7 +603,7 @@ $("lifeSaveBtn").onclick = async ()=>{
     "유형": $("lifeTypeSelect").value,
     "방향": lifeDir,
     "확신도": lifeConf,
-    "관련카테고리": $("lifeCatInput").value.trim(),
+    "해시태그": $("lifeHashtagInput").value.trim().split(/[\s,]+/).filter(Boolean).map(t=> t.startsWith("#")?t:"#"+t).join(","),
     "연결아이템태그": $("lifeLinkInput").value.trim(),
     "근거소스": $("lifeSourceInput").value.trim(),
     "최초포착월": $("lifeFirstMonth").value,

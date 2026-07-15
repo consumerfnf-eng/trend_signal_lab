@@ -218,7 +218,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
     <span id="dirChips"></span>
     <div class="divider"></div>
     <span id="confChips"></span>
-    <input class="search" id="searchInputLife" placeholder="트렌드 검색…">
+    <input class="search" id="searchInputLife" placeholder="트렌드 또는 #해시태그 검색…">
   </div>
   <div class="section-label" id="gridLabelLife">전체 라이프스타일 트렌드</div>
   <div class="grid" id="gridLife"></div>
@@ -285,7 +285,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
       <tr><td>유형</td><td>소비태도 / 여가·취미 / 가치관 / 문화현상</td></tr>
       <tr><td>방향</td><td>확산중 / 정체 / 소강</td></tr>
       <tr><td>확신도</td><td>가설단계 / 교차확인 / 정착</td></tr>
-      <tr><td>관련카테고리</td><td>신발, 아우터 등 콤마로 복수</td></tr>
+      <tr><td>해시태그</td><td>#사우나,#웰니스 처럼 콤마 구분 — 클릭하면 같은 태그로 필터링됨</td></tr>
       <tr><td>연결아이템태그</td><td>아이템 시그널 쪽 키워드명과 정확히 일치시키면 자동 연결됨</td></tr>
       <tr><td>근거소스</td><td>줄바꿈으로 복수 출처 기입</td></tr>
       <tr><td>최초포착월</td><td>YYYY-MM</td></tr>
@@ -394,23 +394,23 @@ function demoRows(){
 function demoLifeRows(){
   return [
     {트렌드명:"아웃도어 생활화", 유형:"여가·취미", 방향:"확산중", 확신도:"교차확인",
-     관련카테고리:"신발,아우터", 연결아이템태그:"트레일 하이브리드 스니커즈,크레이프솔 데저트부츠",
+     해시태그:"#아웃도어,#등산화,#고프코어", 연결아이템태그:"트레일 하이브리드 스니커즈,크레이프솔 데저트부츠",
      근거소스:"네이버데이터랩 '등산화' 검색량 3개월 연속 상승\n아웃도어 관련 릴스 조회수 급증",
      최초포착월:"2026-04", 최근재확인월:"2026-07"},
     {트렌드명:"세컨핸드·리셀 문화 확산", 유형:"가치관", 방향:"확산중", 확신도:"교차확인",
-     관련카테고리:"신발,아우터", 연결아이템태그:"크레이프솔 데저트부츠,트레일 하이브리드 스니커즈",
+     해시태그:"#세컨핸드,#리셀,#가치소비", 연결아이템태그:"크레이프솔 데저트부츠,트레일 하이브리드 스니커즈",
      근거소스:"크림/StockX 거래량 증가\n리셀 관련 커뮤니티 담론 증가",
      최초포착월:"2026-02", 최근재확인월:"2026-07"},
     {트렌드명:"러닝 크루 문화", 유형:"여가·취미", 방향:"확산중", 확신도:"정착",
-     관련카테고리:"신발,티셔츠", 연결아이템태그:"",
+     해시태그:"#러닝크루,#러닝,#소셜스포츠", 연결아이템태그:"",
      근거소스:"전국 러닝크루 수 증가 (언론보도)\n러닝 관련 인스타 해시태그 게시물 수 증가",
      최초포착월:"2025-11", 최근재확인월:"2026-07"},
     {트렌드명:"헬시플레저", 유형:"가치관", 방향:"정체", 확신도:"정착",
-     관련카테고리:"티셔츠,신발", 연결아이템태그:"",
+     해시태그:"#헬시플레저,#웰니스", 연결아이템태그:"",
      근거소스:"웰니스 소비 리포트 지속 언급\n관련 언론기사 꾸준히 노출",
      최초포착월:"2025-09", 최근재확인월:"2026-06"},
     {트렌드명:"조용한 소비(무지출 챌린지)", 유형:"소비태도", 방향:"정체", 확신도:"가설단계",
-     관련카테고리:"전체", 연결아이템태그:"",
+     해시태그:"#무지출챌린지,#조용한소비", 연결아이템태그:"",
      근거소스:"유튜브 무지출챌린지 콘텐츠 증가",
      최초포착월:"2026-06", 최근재확인월:"2026-07"}
   ];
@@ -479,7 +479,7 @@ function loadLifeData(url){
         유형:pick(r,["유형"])||"문화현상",
         방향:pick(r,["방향"])||"정체",
         확신도:pick(r,["확신도"])||"가설단계",
-        관련카테고리:pick(r,["관련카테고리","관련 카테고리"]),
+        해시태그:pick(r,["해시태그","해시 태그","관련카테고리","관련 카테고리"]),
         연결아이템태그:pick(r,["연결아이템태그","연결 아이템 태그"]),
         근거소스:pick(r,["근거소스","근거 소스"]),
         최초포착월:pick(r,["최초포착월","최초 포착월"]),
@@ -499,7 +499,7 @@ function processLifeRows(rows){
     name:r.트렌드명, type:r.유형,
     dir:DIR_KEY[r.방향]||"steady", dirLabel:r.방향,
     conf:CONF_KEY[r.확신도]||"hypothesis", confLabel:r.확신도,
-    cats: r.관련카테고리.split(",").map(s=>s.trim()).filter(Boolean),
+    hashtags: r.해시태그.split(",").map(s=>s.trim()).filter(Boolean),
     linkedItems: r.연결아이템태그.split(",").map(s=>s.trim()).filter(Boolean),
     sources: r.근거소스.split("\n").map(s=>s.trim()).filter(Boolean),
     firstMonth:r.최초포착월, lastMonth:r.최근재확인월
@@ -757,8 +757,13 @@ function filteredLife(){
     (stateLife.type==="전체"||l.type===stateLife.type) &&
     (stateLife.dir==="전체"||l.dir===stateLife.dir) &&
     (stateLife.conf==="전체"||l.conf===stateLife.conf) &&
-    (stateLife.q===""||l.name.toLowerCase().includes(stateLife.q.toLowerCase()))
+    (stateLife.q===""||l.name.toLowerCase().includes(stateLife.q.toLowerCase())||l.hashtags.some(h=>h.toLowerCase().includes(stateLife.q.toLowerCase())))
   );
+}
+function filterLifeByHashtag(tag){
+  stateLife.q = tag.replace(/^#/,"");
+  document.getElementById("searchInputLife").value = stateLife.q;
+  renderLife();
 }
 
 function renderLife(){
@@ -776,7 +781,7 @@ function renderLife(){
       <div style="margin:10px 0;"><span class="conf-badge conf-${l.conf}">${l.confLabel}</span></div>
       <div class="card-note">${l.sources[0]||""}</div>
       <div class="tags">
-        ${l.cats.map(c=>`<span class="tag">${c}</span>`).join("")}
+        ${l.hashtags.map(h=>`<span class="tag hashtag" onclick="event.stopPropagation(); filterLifeByHashtag('${h.replace(/'/g,"")}')">${h}</span>`).join("")}
         ${l.linkedItems.map(n=>`<span class="tag link">🔗 ${n}</span>`).join("")}
       </div>
     </div>
@@ -794,7 +799,7 @@ function openLifeDetail(name){
       <span class="conf-badge conf-${l.conf}">${l.confLabel}</span>
     </div>
     <div class="tags">
-      ${l.cats.map(c=>`<span class="tag">${c}</span>`).join("")}
+      ${l.hashtags.map(h=>`<span class="tag hashtag" onclick="filterLifeByHashtag('${h.replace(/'/g,"")}'); document.getElementById('detailOverlay').classList.remove('show');">${h}</span>`).join("")}
       ${l.linkedItems.map(n=>`<span class="tag link">🔗 ${n}</span>`).join("")}
     </div>
     <div class="obs-list">
