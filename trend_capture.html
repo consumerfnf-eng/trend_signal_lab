@@ -158,6 +158,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
           <select id="subSelect" style="display:none;"></select>
         </div>
       </div>
+      <div class="spec-row" id="materialRow">
+        <div class="spec-label">소재</div>
+        <input type="text" id="materialInput" placeholder="예: 메쉬, 코듀로이, 리사이클 폴리">
+      </div>
       <div class="spec-row">
         <div class="spec-label">발견채널</div>
         <input type="text" id="chInput" placeholder="예: 인스타 @xxxx, 샤오홍슈, 편집숍명">
@@ -167,6 +171,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
         <div class="chiprow" id="srcChips">
           <button class="tchip on" data-val="니치">니치</button>
           <button class="tchip" data-val="메인스트림">메인스트림</button>
+        </div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-label">지역</div>
+        <div class="chiprow" id="regionChips">
+          <button class="tchip on" data-val="전체">전체</button>
+          <button class="tchip" data-val="국내">국내</button>
+          <button class="tchip" data-val="글로벌">글로벌</button>
+          <button class="tchip" data-val="중국">중국</button>
         </div>
       </div>
       <div class="spec-row" id="brandRow">
@@ -253,6 +266,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
         </div>
       </div>
       <div class="spec-row">
+        <div class="spec-label">지역</div>
+        <div class="chiprow" id="lifeRegionChips">
+          <button class="tchip on" data-val="전체">전체</button>
+          <button class="tchip" data-val="국내">국내</button>
+          <button class="tchip" data-val="글로벌">글로벌</button>
+          <button class="tchip" data-val="중국">중국</button>
+        </div>
+      </div>
+      <div class="spec-row">
         <div class="spec-label">해시태그</div>
         <input type="text" id="lifeHashtagInput" placeholder="#사우나 #웰니스 (띄어쓰기로 구분)">
       </div>
@@ -308,6 +330,7 @@ function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
 let WEBAPP_URL = lsGet("trendCapture_webappUrl");
 let SHEET_NAME = lsGet("trendCapture_sheetName") || "아이템시그널";
 let selSrc = "니치";
+let selRegion = "전체";
 let selBrands = new Set();
 let mainstreamFlag = false;
 let recent = [];
@@ -349,10 +372,12 @@ function updateSubField(){
 function toggleBrandRow(domain){
   const isFashion = domain === "패션&뷰티";
   document.getElementById("brandRow").style.display = isFashion ? "grid" : "none";
+  document.getElementById("materialRow").style.display = isFashion ? "grid" : "none";
   if(!isFashion){
     selBrands.clear();
     document.querySelectorAll("#brandChips .tchip.brand").forEach(b=>b.classList.remove("on"));
     document.querySelector("#brandChips .tchip.brand-all").classList.add("on");
+    $("materialInput").value = "";
   }
 }
 populateDomains();
@@ -428,6 +453,10 @@ document.querySelectorAll("#srcChips .tchip").forEach(b=> b.onclick = ()=>{
   document.querySelectorAll("#srcChips .tchip").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); selSrc = b.dataset.val;
 });
+document.querySelectorAll("#regionChips .tchip").forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll("#regionChips .tchip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); selRegion = b.dataset.val;
+});
 document.querySelectorAll("#brandChips .tchip").forEach(b=> b.onclick = ()=>{
   if(b.dataset.val === "전체"){
     selBrands.clear();
@@ -451,7 +480,7 @@ function showToast(msg, isErr){
 }
 
 function resetForm(){
-  ["kwInput","subInput","chInput","quantInput","sourceLinkInput","hashtagInput","memoInput","imgUrlInput"].forEach(id=> $(id).value="");
+  ["kwInput","subInput","chInput","quantInput","sourceLinkInput","hashtagInput","memoInput","imgUrlInput","materialInput"].forEach(id=> $(id).value="");
   $("imgFileInput").value = "";
   pendingImageDataUrl = null;
   $("imagePreview").innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
@@ -462,6 +491,8 @@ function resetForm(){
   mainstreamFlag = false; $("mainstreamChip").classList.remove("on");
   document.querySelectorAll("#srcChips .tchip").forEach(x=>x.classList.remove("on"));
   document.querySelector("#srcChips .tchip").classList.add("on"); selSrc="니치";
+  document.querySelectorAll("#regionChips .tchip").forEach(x=>x.classList.remove("on"));
+  document.querySelector('#regionChips .tchip[data-val="전체"]').classList.add("on"); selRegion="전체";
 }
 
 function renderRecent(){
@@ -489,6 +520,8 @@ $("saveBtn").onclick = async ()=>{
     "서브카테고리": $("subSelect").style.display !== "none" ? $("subSelect").value : $("subInput").value.trim(),
     "발견채널": $("chInput").value.trim(),
     "소스타입": selSrc,
+    "지역": selRegion,
+    "소재": $("materialInput").value.trim(),
     "관측자": $("observerInput").value.trim(),
     "메모": $("memoInput").value.trim(),
     "정량신호": $("quantInput").value.trim(),
@@ -542,7 +575,7 @@ $("webappSaveBtn").onclick = ()=>{
 
 /* ====================== 라이프스타일 트렌드 탭 ====================== */
 const SHEET_NAME_LIFE = "라이프스타일";
-let lifeDir = "정체", lifeConf = "가설단계";
+let lifeDir = "정체", lifeConf = "가설단계", lifeRegion = "전체";
 let recentLife = [];
 
 document.getElementById("tabItemBtn").onclick = ()=>{
@@ -572,6 +605,10 @@ document.querySelectorAll("#lifeConfChips .tchip").forEach(b=> b.onclick = ()=>{
   document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); lifeConf = b.dataset.val;
 });
+document.querySelectorAll("#lifeRegionChips .tchip").forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll("#lifeRegionChips .tchip").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); lifeRegion = b.dataset.val;
+});
 
 function resetLifeForm(){
   ["lifeNameInput","lifeHashtagInput","lifeLinkInput","lifeSourceInput"].forEach(id=> $(id).value="");
@@ -579,6 +616,8 @@ function resetLifeForm(){
   document.querySelector('#lifeDirChips .tchip[data-val="정체"]').classList.add("on"); lifeDir="정체";
   document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
   document.querySelector('#lifeConfChips .tchip[data-val="가설단계"]').classList.add("on"); lifeConf="가설단계";
+  document.querySelectorAll("#lifeRegionChips .tchip").forEach(x=>x.classList.remove("on"));
+  document.querySelector('#lifeRegionChips .tchip[data-val="전체"]').classList.add("on"); lifeRegion="전체";
 }
 
 function renderRecentLife(){
@@ -603,6 +642,7 @@ $("lifeSaveBtn").onclick = async ()=>{
     "유형": $("lifeTypeSelect").value,
     "방향": lifeDir,
     "확신도": lifeConf,
+    "지역": lifeRegion,
     "해시태그": $("lifeHashtagInput").value.trim().split(/[\s,]+/).filter(Boolean).map(t=> t.startsWith("#")?t:"#"+t).join(","),
     "연결아이템태그": $("lifeLinkInput").value.trim(),
     "근거소스": $("lifeSourceInput").value.trim(),
