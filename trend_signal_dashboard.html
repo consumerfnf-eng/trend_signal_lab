@@ -789,6 +789,16 @@ function renderLife(){
   grid.querySelectorAll(".card").forEach(c=> c.onclick = ()=> openLifeDetail(c.dataset.life));
 }
 
+function escapeHtml(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function linkify(text){
+  const escaped = escapeHtml(text);
+  return escaped.replace(/(https?:\/\/[^\s]+)/g, url=>
+    `<a href="${url}" target="_blank" rel="noopener" style="color:var(--emerging);word-break:break-all;">${url}</a>`
+  );
+}
+
 function openLifeDetail(name){
   const l = LIFE.find(x=>x.name===name);
   document.getElementById("detailBody").innerHTML = `
@@ -804,7 +814,7 @@ function openLifeDetail(name){
     </div>
     <div class="obs-list">
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-bottom:6px;">근거 소스</div>
-      <ul class="src-list">${l.sources.map(s=>`<li>· ${s}</li>`).join("")}</ul>
+      <ul class="src-list">${l.sources.map(s=>`<li>· ${linkify(s)}</li>`).join("")}</ul>
     </div>
   `;
   document.getElementById("detailOverlay").classList.add("show");
