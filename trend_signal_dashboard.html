@@ -201,8 +201,6 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
     <div class="divider"></div>
     <span id="catChips"></span>
     <div class="divider"></div>
-    <span id="materialChips"></span>
-    <div class="divider"></div>
     <span id="tierChips"></span>
     <div class="divider"></div>
     <span id="brandChips"></span>
@@ -337,7 +335,7 @@ const REGIONS = ["전체","국내","글로벌","중국"];
 
 // 캡처 페이지(trend_capture.html)와 동일한 taxonomy — 데이터가 없어도 전체 카테고리가 항상 보이도록 고정
 const DOMAIN_CATS = {
-  "패션&뷰티": ["의류","신발","ACC","뷰티","기타"],
+  "패션&뷰티": ["의류","신발","ACC","소재","뷰티","기타"],
   "F&B": ["카페·디저트","레스토랑","주류·음료","델리·프로덕트","기타"],
   "공간": ["리테일·팝업","전시·편집숍","호스피탈리티","오피스·워크스페이스","기타"],
   "라이프스타일": ["여가·취미","소비태도","가치관","문화현상","여행","기타"]
@@ -355,7 +353,7 @@ const CONFIDENCES = [
   {key:"established",label:"정착"}
 ];
 
-let state = { domain:"전체", cat:"전체", tier:"전체", brand:"전체", region:"전체", material:"전체", q:"" };
+let state = { domain:"전체", cat:"전체", tier:"전체", brand:"전체", region:"전체", q:"" };
 let stateLife = { type:"전체", dir:"전체", conf:"전체", region:"전체", q:"" };
 let ITEMS = []; // aggregated keyword objects
 let LIFE = [];  // lifestyle trend objects
@@ -614,11 +612,6 @@ function renderChips(){
   document.getElementById("regionChips").innerHTML = REGIONS.map(r=>
     `<button class="chip ${state.region===r?'active':''}" data-type="region" data-val="${r}">${r}</button>`).join("");
 
-  const materials = [...new Set(catsPool.map(i=>i.material).filter(Boolean))];
-  if(!["전체",...materials].includes(state.material)) state.material = "전체";
-  document.getElementById("materialChips").innerHTML = `<button class="chip ${state.material==='전체'?'active':''}" data-type="material" data-val="전체">전체 소재</button>` +
-    materials.map(m=>`<button class="chip ${state.material===m?'active':''}" data-type="material" data-val="${m}">${m}</button>`).join("");
-
   document.querySelectorAll("#filterBar .chip").forEach(el=>el.onclick=()=>{
     state[el.dataset.type] = el.dataset.val;
     if(el.dataset.type==="domain") state.cat = "전체";
@@ -645,7 +638,6 @@ function filtered(){
     (state.tier==="전체"||i.tier===state.tier) &&
     (state.brand==="전체"||i.brands.includes(state.brand)) &&
     (state.region==="전체"||i.region===state.region) &&
-    (state.material==="전체"||i.material===state.material) &&
     (state.q===""||i.kw.toLowerCase().includes(state.q.toLowerCase())||i.hashtags.some(h=>h.toLowerCase().includes(state.q.toLowerCase())))
   );
 }
