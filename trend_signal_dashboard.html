@@ -201,13 +201,13 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
     <div class="divider"></div>
     <span id="catChips"></span>
     <div class="divider"></div>
+    <span id="materialChips"></span>
+    <div class="divider"></div>
     <span id="tierChips"></span>
     <div class="divider"></div>
     <span id="brandChips"></span>
     <div class="divider"></div>
     <span id="regionChips"></span>
-    <div class="divider"></div>
-    <span id="materialChips"></span>
     <input class="search" id="searchInput" placeholder="키워드 또는 #해시태그 검색…">
   </div>
   <div class="section-label" id="gridLabel">전체 키워드</div>
@@ -615,14 +615,9 @@ function renderChips(){
     `<button class="chip ${state.region===r?'active':''}" data-type="region" data-val="${r}">${r}</button>`).join("");
 
   const materials = [...new Set(catsPool.map(i=>i.material).filter(Boolean))];
-  if(materials.length){
-    if(!["전체",...materials].includes(state.material)) state.material = "전체";
-    document.getElementById("materialChips").innerHTML = `<button class="chip ${state.material==='전체'?'active':''}" data-type="material" data-val="전체">전체 소재</button>` +
-      materials.map(m=>`<button class="chip ${state.material===m?'active':''}" data-type="material" data-val="${m}">${m}</button>`).join("");
-  } else {
-    state.material = "전체";
-    document.getElementById("materialChips").innerHTML = "";
-  }
+  if(!["전체",...materials].includes(state.material)) state.material = "전체";
+  document.getElementById("materialChips").innerHTML = `<button class="chip ${state.material==='전체'?'active':''}" data-type="material" data-val="전체">전체 소재</button>` +
+    materials.map(m=>`<button class="chip ${state.material===m?'active':''}" data-type="material" data-val="${m}">${m}</button>`).join("");
 
   document.querySelectorAll("#filterBar .chip").forEach(el=>el.onclick=()=>{
     state[el.dataset.type] = el.dataset.val;
