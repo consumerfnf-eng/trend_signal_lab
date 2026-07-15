@@ -299,9 +299,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 
 <script>
 /* ====================== CONFIG ====================== */
-let SHEET_CSV_URL = ""; // 예: "https://docs.google.com/spreadsheets/d/xxx/pub?output=csv"
-let LIFESTYLE_CSV_URL = ""; // 라이프스타일 레이더용 별도 시트
-let KNOWN_CSV_URL = ""; // 기존리포트 키워드 목록 (WGSN/Peclers 담당자가 관리)
+function lsGet(key){ try{ return localStorage.getItem(key) || ""; }catch(e){ return ""; } }
+function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+
+let SHEET_CSV_URL = lsGet("trendSignal_sheetUrl"); // 예: "https://docs.google.com/spreadsheets/d/xxx/pub?output=csv"
+let LIFESTYLE_CSV_URL = lsGet("trendSignal_lifeUrl"); // 라이프스타일 레이더용 별도 시트
+let KNOWN_CSV_URL = lsGet("trendSignal_knownUrl"); // 기존리포트 키워드 목록 (WGSN/Peclers 담당자가 관리)
 /* ====================================================== */
 let RAW_ITEM_ROWS = [];
 let KNOWN_LIST = [];
@@ -786,6 +789,9 @@ document.getElementById("csvApplyBtn").onclick = ()=>{
   SHEET_CSV_URL = document.getElementById("csvUrlInput").value.trim();
   LIFESTYLE_CSV_URL = document.getElementById("csvUrlInputLife").value.trim();
   KNOWN_CSV_URL = document.getElementById("csvUrlInputKnown").value.trim();
+  lsSet("trendSignal_sheetUrl", SHEET_CSV_URL);
+  lsSet("trendSignal_lifeUrl", LIFESTYLE_CSV_URL);
+  lsSet("trendSignal_knownUrl", KNOWN_CSV_URL);
   document.getElementById("configOverlay").classList.remove("show");
   loadData(SHEET_CSV_URL);
   loadLifeData(LIFESTYLE_CSV_URL);

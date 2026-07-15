@@ -220,8 +220,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 </div>
 
 <script>
-let WEBAPP_URL = "";
-let SHEET_NAME = "아이템시그널";
+function lsGet(key){ try{ return localStorage.getItem(key) || ""; }catch(e){ return ""; } }
+function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+
+let WEBAPP_URL = lsGet("trendCapture_webappUrl");
+let SHEET_NAME = lsGet("trendCapture_sheetName") || "아이템시그널";
 let selSrc = "니치";
 let selBrands = new Set();
 let mainstreamFlag = false;
@@ -448,6 +451,8 @@ $("configOverlay").onclick = e=>{ if(e.target.id==="configOverlay") e.currentTar
 $("webappSaveBtn").onclick = ()=>{
   WEBAPP_URL = $("webappInput").value.trim();
   SHEET_NAME = $("sheetNameInput").value.trim() || "아이템시그널";
+  lsSet("trendCapture_webappUrl", WEBAPP_URL);
+  lsSet("trendCapture_sheetName", SHEET_NAME);
   $("configOverlay").classList.remove("show");
   showToast("연동 설정 저장됨");
 };
