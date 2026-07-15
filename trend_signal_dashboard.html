@@ -83,13 +83,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 .src-list{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px;}
 .src-list li{margin-bottom:3px;}
 
-.thumb-strip{display:flex;gap:6px;margin-bottom:10px;}
-.thumb-strip img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);}
-.thumb-more{width:44px;height:44px;border-radius:6px;border:1px solid var(--border);background:var(--panel-2);color:var(--dim);font-family:var(--mono);font-size:11px;display:flex;align-items:center;justify-content:center;}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:14px 0;}
-.gallery a{display:block;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
-.gallery img{width:100%;height:110px;object-fit:cover;display:block;}
-.gallery .gcap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));color:#fff;font-size:10px;font-family:var(--mono);padding:4px 6px;}
+.thumb-strip{margin-bottom:10px;}
+.photo-link{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--emerging);background:rgba(91,140,255,0.1);border:1px solid rgba(91,140,255,0.3);border-radius:6px;padding:6px 10px;text-decoration:none;}
+.photo-link:hover{background:rgba(91,140,255,0.18);}
+.photo-link-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;}
 
 /* ---------- Stats strip ---------- */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);}
@@ -636,7 +633,7 @@ function render(){
       </div>
       <div class="card-meta">${i.domain} · ${i.cat}${i.sub?" · "+i.sub:""}</div>
       <div class="sparkwrap">${sparkSVG(i.weeks, tierColor(i.tier))}</div>
-      ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL).slice(-3).reverse(); return imgs.length?`<div class="thumb-strip">${imgs.map(o=>`<img src="${o.이미지URL}" loading="lazy" alt="" onerror="this.style.display='none'">`).join("")}${i.obs.filter(o=>o.이미지URL).length>3?`<div class="thumb-more">+${i.obs.filter(o=>o.이미지URL).length-3}</div>`:""}</div>`:""; })()}
+      ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL); return imgs.length?`<div class="thumb-strip"><a href="${imgs[imgs.length-1].이미지URL}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="photo-link">📷 사진 ${imgs.length}장 보기 ↗</a></div>`:""; })()}
       <div class="card-stats">
         <span><b>${i.obsCount}</b> 관측</span>
         <span><b>${i.sourceCount}</b> 소스</span>
@@ -668,7 +665,7 @@ function openDetail(kw){
     </div>
     ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL); return imgs.length?`
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-top:18px;">관측 이미지 (${imgs.length})</div>
-      <div class="gallery">${imgs.slice().reverse().map(o=>`<a href="${o.이미지URL}" target="_blank" rel="noopener"><img src="${o.이미지URL}" loading="lazy" alt="" onerror="this.style.display='none'"><span class="gcap">${o.발견채널} · ${o.타임스탬프}</span></a>`).join("")}</div>
+      <div class="photo-link-list">${imgs.slice().reverse().map(o=>`<a href="${o.이미지URL}" target="_blank" rel="noopener" class="photo-link">📷 ${o.발견채널||'사진'} · ${o.타임스탬프} 보기 ↗</a>`).join("")}</div>
     `:""; })()}
     <div class="obs-list">
       ${i.obs.slice().reverse().map(o=>`
