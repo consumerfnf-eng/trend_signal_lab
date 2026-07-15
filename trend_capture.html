@@ -119,7 +119,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
       <div class="image-url-row">
         <input id="imgUrlInput" placeholder="이미지 URL 붙여넣기 (또는 아래에서 파일 선택)">
         <label for="imgFileInput" style="display:block;margin-top:8px;text-align:center;padding:9px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;">
-          📎 URL이 없다면 여기서 사진 파일 선택 (자동으로 드라이브에 업로드됨)
+          📎 URL이 없다면 여기서 사진 파일 선택 (작은 미리보기로 압축돼 시트에 바로 저장됨)
         </label>
         <input type="file" id="imgFileInput" accept="image/*" style="display:none;">
       </div>
@@ -280,7 +280,7 @@ document.getElementById("domainSelect").onchange = e=>{ populateCats(e.target.va
 document.getElementById("catSelect").onchange = updateSubField;
 
 const $ = id => document.getElementById(id);
-let pendingImageBase64 = null, pendingImageMime = "", pendingImageName = "";
+let pendingImageDataUrl = null;
 
 function resizeImageFile(file){
   return new Promise((resolve, reject)=>{
@@ -288,13 +288,20 @@ function resizeImageFile(file){
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>{
-        const maxW = 1200;
+        const maxW = 480;
         const scale = Math.min(1, maxW / img.width);
         const canvas = document.createElement("canvas");
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
+        let quality = 0.6;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        // 구글시트 셀 글자수 제한(약 5만자) 안에 들어오도록 화질을 점점 낮춤
+        while(dataUrl.length > 38000 && quality > 0.15){
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(dataUrl);
       };
       img.onerror = reject;
       img.src = reader.result;
@@ -308,10 +315,10 @@ $("imgUrlInput").addEventListener("input", e=>{
   const url = e.target.value.trim();
   const prev = $("imagePreview");
   if(url){
-    pendingImageBase64 = null; $("imgFileInput").value = "";
+    pendingImageDataUrl = null; $("imgFileInput").value = "";
     prev.innerHTML = `<img src="${url}" alt="">`;
     $("origLink").href = url; $("origLink").style.display = "inline-block";
-  } else if(!pendingImageBase64) {
+  } else if(!pendingImageDataUrl) {
     prev.innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
     $("origLink").style.display = "none";
   }
@@ -322,14 +329,12 @@ $("imgFileInput").addEventListener("change", async e=>{
   if(!file) return;
   $("imgUrlInput").value = "";
   $("origLink").style.display = "none";
-  $("imagePreview").innerHTML = `<div class="image-empty">사진 처리 중…</div>`;
+  $("imagePreview").innerHTML = `<div class="image-empty">사진 압축 중…</div>`;
   try{
     const dataUrl = await resizeImageFile(file);
-    pendingImageBase64 = dataUrl.split(",")[1];
-    pendingImageMime = "image/jpeg";
-    pendingImageName = (file.name||"capture").replace(/\.[^.]+$/,"") + ".jpg";
+    pendingImageDataUrl = dataUrl;
     $("imagePreview").innerHTML = `<img src="${dataUrl}" alt="">`;
-    showToast("사진 준비 완료 · 저장 시 자동 업로드됩니다");
+    showToast("사진 준비 완료 · 시트에 바로 저장됩니다");
   }catch(err){
     showToast("사진 처리 실패 — 다른 파일로 시도해주세요", true);
     $("imagePreview").innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
@@ -365,7 +370,7 @@ function showToast(msg, isErr){
 function resetForm(){
   ["kwInput","subInput","chInput","quantInput","sourceLinkInput","hashtagInput","memoInput","imgUrlInput"].forEach(id=> $(id).value="");
   $("imgFileInput").value = "";
-  pendingImageBase64 = null; pendingImageMime = ""; pendingImageName = "";
+  pendingImageDataUrl = null;
   $("imagePreview").innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
   $("origLink").style.display = "none";
   document.querySelectorAll("#brandChips .tchip.brand").forEach(b=>b.classList.remove("on"));
@@ -408,7 +413,7 @@ $("saveBtn").onclick = async ()=>{
     "브랜드태그": $("domainSelect").value === "패션&뷰티" ? (selBrands.size ? [...selBrands].join(",") : "전체") : "공통",
     "해시태그": $("hashtagInput").value.trim().split(/[\s,]+/).filter(Boolean).map(t=> t.startsWith("#")?t:"#"+t).join(","),
     "기존리포트언급": mainstreamFlag ? "Y" : "N",
-    "이미지URL": pendingImageBase64 ? "" : $("imgUrlInput").value.trim()
+    "이미지URL": pendingImageDataUrl || $("imgUrlInput").value.trim()
   };
 
   if(!WEBAPP_URL){
@@ -417,20 +422,15 @@ $("saveBtn").onclick = async ()=>{
     return;
   }
 
-  $("saveBtn").disabled = true; $("saveBtn").textContent = pendingImageBase64 ? "사진 업로드 중…" : "저장 중…";
+  $("saveBtn").disabled = true; $("saveBtn").textContent = "저장 중…";
   try{
     const fd = new FormData();
     Object.entries(payload).forEach(([k,v])=> fd.append(k, v));
-    if(pendingImageBase64){
-      fd.append("imageBase64", pendingImageBase64);
-      fd.append("imageMime", pendingImageMime);
-      fd.append("imageName", pendingImageName);
-    }
     await fetch(WEBAPP_URL, { method:"POST", body: fd, mode:"no-cors" });
     // no-cors 응답은 읽을 수 없어 낙관적으로 성공 처리합니다.
     recent.push({
       키워드:payload["키워드/아이템명"], 도메인:payload["도메인"], 카테고리:payload["카테고리"],
-      이미지URL: pendingImageBase64 ? `data:${pendingImageMime};base64,${pendingImageBase64}` : payload["이미지URL"]
+      이미지URL: payload["이미지URL"]
     });
     renderRecent();
     showToast("저장했습니다 · 시트에서 확인해보세요 ✓");
