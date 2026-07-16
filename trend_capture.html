@@ -324,11 +324,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 </div>
 
 <script>
-function lsGet(key){ try{ return localStorage.getItem(key) || ""; }catch(e){ return ""; } }
+function lsGet(key, fallback){ try{ return localStorage.getItem(key) || fallback || ""; }catch(e){ return fallback || ""; } }
 function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
 
-let WEBAPP_URL = lsGet("trendCapture_webappUrl");
-let SHEET_NAME = lsGet("trendCapture_sheetName") || "아이템시그널";
+// ↓ 팀 공용 기본값. Apps Script를 재배포해서 URL이 바뀌면 이 줄만 바꾸면 됩니다.
+const DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxJYgooPcfF9X9w7RR1xwys0ylKDNVozjhJQZ8tev7k_x8rvyheDqYYl14CwBZ6uiWLaQ/exec";
+
+let WEBAPP_URL = lsGet("trendCapture_webappUrl", DEFAULT_WEBAPP_URL);
+let SHEET_NAME = lsGet("trendCapture_sheetName", "아이템시그널");
 let selSrc = "니치";
 let selRegion = "전체";
 let selBrands = new Set();

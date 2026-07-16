@@ -330,12 +330,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 
 <script>
 /* ====================== CONFIG ====================== */
-function lsGet(key){ try{ return localStorage.getItem(key) || ""; }catch(e){ return ""; } }
+function lsGet(key, fallback){ try{ return localStorage.getItem(key) || fallback || ""; }catch(e){ return fallback || ""; } }
 function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
 
-let SHEET_CSV_URL = lsGet("trendSignal_sheetUrl"); // 예: "https://docs.google.com/spreadsheets/d/xxx/pub?output=csv"
-let LIFESTYLE_CSV_URL = lsGet("trendSignal_lifeUrl"); // 라이프스타일 레이더용 별도 시트
-let KNOWN_CSV_URL = lsGet("trendSignal_knownUrl"); // 기존리포트 키워드 목록 (WGSN/Peclers 담당자가 관리)
+// ↓ 팀 공용 기본 URL. 시트를 새로 만들거나 이전하면 이 세 줄만 바꾸면 됩니다.
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=아이템시그널";
+const DEFAULT_LIFE_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=라이프스타일";
+const DEFAULT_KNOWN_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=기존리포트키워드";
+
+let SHEET_CSV_URL = lsGet("trendSignal_sheetUrl", DEFAULT_SHEET_URL);
+let LIFESTYLE_CSV_URL = lsGet("trendSignal_lifeUrl", DEFAULT_LIFE_URL);
+let KNOWN_CSV_URL = lsGet("trendSignal_knownUrl", DEFAULT_KNOWN_URL);
 /* ====================================================== */
 let RAW_ITEM_ROWS = [];
 let KNOWN_LIST = [];
