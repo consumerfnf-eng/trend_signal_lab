@@ -94,6 +94,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 .photo-link-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:14px 0;}
 .gallery-item{display:block;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;}
+.cloud-word{font-family:var(--disp);font-weight:700;cursor:pointer;display:inline-block;transition:.15s;line-height:1;}
+.cloud-word:hover{opacity:.75;transform:scale(1.1) !important;}
 .gallery-item img{width:100%;height:110px;object-fit:cover;display:block;}
 .gallery-item .gcap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));color:#fff;font-size:10px;font-family:var(--mono);padding:4px 6px;}
 
@@ -188,6 +190,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
   </div>
   <div class="topbar-right">
     <button class="btn" id="reloadBtn">↻ 시트 새로고침</button>
+    <button class="btn" id="cloudBtn">☁ 해시태그 클라우드</button>
     <button class="btn" id="configBtn">⚙ 데이터 연결 설정</button>
   </div>
 </div>
@@ -242,6 +245,16 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 <!-- Photo Lightbox -->
 <div class="overlay" id="lightboxOverlay" onclick="this.classList.remove('show')">
   <img id="lightboxImg" src="" alt="" style="max-width:90vw;max-height:90vh;border-radius:8px;">
+</div>
+
+<!-- Hashtag Cloud -->
+<div class="overlay" id="cloudOverlay">
+  <div class="modal" style="max-width:900px;position:relative;">
+    <button class="modal-close" id="cloudClose">✕</button>
+    <h2>해시태그 클라우드</h2>
+    <p style="font-size:12px;color:var(--dim);margin:0 0 18px;">많이 쓰인 태그일수록 크게 보입니다 · 클릭하면 바로 필터링됩니다 (아이템 시그널 + 라이프스타일 레이더 통합)</p>
+    <div id="cloudBody" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;max-height:60vh;overflow-y:auto;padding:10px 4px;"></div>
+  </div>
 </div>
 
 <!-- Config Modal -->
@@ -763,6 +776,42 @@ function openDetail(kw){
 }
 document.getElementById("detailClose").onclick = ()=> document.getElementById("detailOverlay").classList.remove("show");
 document.getElementById("detailOverlay").onclick = e=>{ if(e.target.id==="detailOverlay") e.currentTarget.classList.remove("show"); };
+
+function renderHashtagCloud(){
+  const freq = {};
+  ITEMS.forEach(i=> i.hashtags.forEach(h=>{ freq[h] = (freq[h]||0) + i.obsCount; }));
+  LIFE.forEach(l=> l.hashtags.forEach(h=>{ freq[h] = (freq[h]||0) + (l.entryCount||1); }));
+  const entries = Object.entries(freq).sort((a,b)=> b[1]-a[1]);
+  const body = document.getElementById("cloudBody");
+  if(!entries.length){ body.innerHTML = `<div class="empty" style="padding:20px 0;">아직 해시태그가 없습니다.</div>`; return; }
+  const maxCount = entries[0][1];
+  const minCount = entries[entries.length-1][1];
+  const colors = ["var(--rising)","var(--emerging)","var(--teal)","var(--link)","var(--established)"];
+  body.innerHTML = entries.map(([tag,count],idx)=>{
+    const ratio = maxCount===minCount ? 1 : (count-minCount)/(maxCount-minCount);
+    const size = 14 + ratio*34;
+    const color = colors[idx % colors.length];
+    const rotate = ((idx % 5) - 2) * 3;
+    return `<span class="cloud-word" style="font-size:${size.toFixed(0)}px;color:${color};transform:rotate(${rotate}deg);" data-tag="${tag.replace(/"/g,"&quot;")}" title="${count}회 언급">${tag}</span>`;
+  }).join("");
+  body.querySelectorAll(".cloud-word").forEach(el=>{
+    el.onclick = ()=>{
+      const tag = el.dataset.tag;
+      document.getElementById("cloudOverlay").classList.remove("show");
+      if(document.getElementById("tabLifeBtn").classList.contains("active")){
+        filterLifeByHashtag(tag);
+      } else {
+        filterByHashtag(tag);
+      }
+    };
+  });
+}
+document.getElementById("cloudBtn").onclick = ()=>{
+  renderHashtagCloud();
+  document.getElementById("cloudOverlay").classList.add("show");
+};
+document.getElementById("cloudClose").onclick = ()=> document.getElementById("cloudOverlay").classList.remove("show");
+document.getElementById("cloudOverlay").onclick = e=>{ if(e.target.id==="cloudOverlay") e.currentTarget.classList.remove("show"); };
 
 /* ---------------- Lifestyle rendering ---------------- */
 function renderLifeChips(){
