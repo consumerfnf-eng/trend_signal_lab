@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TREND SIGNAL LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0D10; --panel:#14171C; --border:#242830;
+    --text:#E7E5E0; --muted:#8B92A0; --rising:#FF5A36; --emerging:#5B8CFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .wrap{max-width:640px;width:100%;}
+  .eyebrow{font-family:'Space Grotesk',sans-serif;font-size:12px;letter-spacing:.18em;color:var(--rising);text-transform:uppercase;margin-bottom:10px;text-align:center;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:32px;text-align:center;margin:0 0 40px;}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:560px){.cards{grid-template-columns:1fr;}}
+  a.card{
+    display:block;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:26px;text-decoration:none;color:var(--text);transition:.15s;
+  }
+  a.card:hover{border-color:var(--muted);transform:translateY(-2px);}
+  .icon{font-size:28px;margin-bottom:12px;}
+  .card h2{font-family:'Space Grotesk',sans-serif;font-size:18px;margin:0 0 8px;}
+  .card p{font-size:13px;color:var(--muted);line-height:1.6;margin:0;}
+  .card.capture .icon{color:var(--rising);}
+  .card.dash .icon{color:var(--emerging);}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">F&amp;F Consumer Strategy · Trend Agent</div>
+    <h1>TREND SIGNAL LAB</h1>
+    <div class="cards">
+      <a class="card capture" href="./trend_capture.html">
+        <div class="icon">📝</div>
+        <h2>Trend Capture</h2>
+        <p>관측한 아이템·라이프스타일 트렌드를 입력하는 페이지</p>
+      </a>
+      <a class="card dash" href="./trend_signal_dashboard.html">
+        <div class="icon">📊</div>
+        <h2>Trend Signal</h2>
+        <p>신호 감지·차트·해시태그 클라우드를 확인하는 대시보드</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
