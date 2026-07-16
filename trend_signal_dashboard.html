@@ -81,7 +81,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 .tag.hashtag{background:rgba(45,212,191,0.12);color:var(--teal);border-color:transparent;cursor:pointer;}
 .tag.hashtag:hover{background:rgba(45,212,191,0.22);}
 .src-list{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px;}
-.src-list li{margin-bottom:3px;}
+.src-list li{margin-bottom:10px;padding-left:12px;border-left:2px solid var(--border);}
+.src-title{color:var(--text);font-size:13px;margin-bottom:2px;}
+.src-url{color:var(--emerging);word-break:break-all;font-size:11px;font-family:var(--mono);text-decoration:none;}
+.src-url:hover{text-decoration:underline;}
 
 .thumb-strip{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
 .thumb-strip img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);}
@@ -506,16 +509,33 @@ const DIR_KEY = {"확산중":"expanding","정체":"steady","소강":"declining"}
 const CONF_KEY = {"가설단계":"hypothesis","교차확인":"crossverified","정착":"established"};
 
 function processLifeRows(rows){
-  LIFE = rows.map(r=>({
-    name:r.트렌드명, type:r.유형,
-    dir:DIR_KEY[r.방향]||"steady", dirLabel:r.방향,
-    conf:CONF_KEY[r.확신도]||"hypothesis", confLabel:r.확신도,
-    region: r.지역 || "전체",
-    hashtags: r.해시태그.split(",").map(s=>s.trim()).filter(Boolean),
-    linkedItems: r.연결아이템태그.split(",").map(s=>s.trim()).filter(Boolean),
-    sources: r.근거소스.split("\n").map(s=>s.trim()).filter(Boolean),
-    firstMonth:r.최초포착월, lastMonth:r.최근재확인월
-  }));
+  const byName = {};
+  rows.forEach(r=>{
+    if(!r.트렌드명) return;
+    if(!byName[r.트렌드명]) byName[r.트렌드명] = [];
+    byName[r.트렌드명].push(r);
+  });
+
+  LIFE = Object.entries(byName).map(([name, entries])=>{
+    // 최근재확인월 기준 오름차순 정렬 → 가장 최근 항목의 판단(방향/확신도)을 현재 상태로 사용
+    entries.sort((a,b)=> (a.최근재확인월||"").localeCompare(b.최근재확인월||""));
+    const latest = entries[entries.length-1];
+    const months = entries.map(e=>e.최초포착월).filter(Boolean).sort();
+    return {
+      name,
+      type: latest.유형,
+      dir: DIR_KEY[latest.방향]||"steady", dirLabel: latest.방향,
+      conf: CONF_KEY[latest.확신도]||"hypothesis", confLabel: latest.확신도,
+      region: latest.지역 || "전체",
+      hashtags: [...new Set(entries.flatMap(e=>(e.해시태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
+      linkedItems: [...new Set(entries.flatMap(e=>(e.연결아이템태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
+      sources: entries.flatMap(e=>(e.근거소스||"").split("\n").map(s=>s.trim()).filter(Boolean)),
+      firstMonth: months[0] || latest.최초포착월,
+      lastMonth: latest.최근재확인월,
+      entryCount: entries.length
+    };
+  });
+
   // 정착 > 교차확인 > 가설단계, 확산중 우선 정렬
   const confOrder={established:0,crossverified:1,hypothesis:2};
   LIFE.sort((a,b)=> confOrder[a.conf]-confOrder[b.conf] || (b.dir==="expanding")-(a.dir==="expanding"));
@@ -797,7 +817,7 @@ function renderLife(){
         <div class="card-title">${l.name}</div>
         <div class="dir-badge dir-${l.dir}">${l.dirLabel}</div>
       </div>
-      <div class="card-meta"><span class="type-tag">${l.type}</span>${l.region!=="전체"?" · "+l.region:""} · ${l.firstMonth} → ${l.lastMonth} 재확인</div>
+      <div class="card-meta"><span class="type-tag">${l.type}</span>${l.region!=="전체"?" · "+l.region:""} · ${l.firstMonth} → ${l.lastMonth} 재확인${l.entryCount>1?` · 기록 ${l.entryCount}건`:""}</div>
       <div style="margin:10px 0;"><span class="conf-badge conf-${l.conf}">${l.confLabel}</span></div>
       <div class="card-note">${l.sources[0]||""}</div>
       <div class="tags">
@@ -818,12 +838,40 @@ function linkify(text){
     `<a href="${url}" target="_blank" rel="noopener" style="color:var(--emerging);word-break:break-all;">${url}</a>`
   );
 }
+// 근거소스 줄들을 [제목, 링크] 쌍으로 묶어서 파싱
+// - "제목 텍스트" 다음 줄이 순수 URL이면 한 세트로 묶음
+// - 한 줄에 "제목 — https://..." 처럼 섞여 있으면 분리
+// - 순수 URL만 있으면 링크만, 순수 텍스트만 있으면 텍스트만
+function parseSources(sources){
+  const urlOnly = s => /^https?:\/\/\S+$/.test(s.trim());
+  const result = [];
+  for(let i=0;i<sources.length;i++){
+    const line = sources[i];
+    if(urlOnly(line)){
+      result.push({title:null, url:line});
+      continue;
+    }
+    const inline = line.match(/(https?:\/\/\S+)/);
+    if(inline){
+      const title = line.replace(inline[1],"").trim().replace(/[-–—:·]+$/,"").trim();
+      result.push({title: title || null, url: inline[1]});
+      continue;
+    }
+    if(i+1 < sources.length && urlOnly(sources[i+1])){
+      result.push({title: line, url: sources[i+1]});
+      i++;
+    } else {
+      result.push({title: line, url: null});
+    }
+  }
+  return result;
+}
 
 function openLifeDetail(name){
   const l = LIFE.find(x=>x.name===name);
   document.getElementById("detailBody").innerHTML = `
     <h2>${l.name}</h2>
-    <div class="card-meta"><span class="type-tag">${l.type}</span>${l.region!=="전체"?" · "+l.region:""} · 최초포착 ${l.firstMonth} · 최근재확인 ${l.lastMonth}</div>
+    <div class="card-meta"><span class="type-tag">${l.type}</span>${l.region!=="전체"?" · "+l.region:""} · 최초포착 ${l.firstMonth} · 최근재확인 ${l.lastMonth}${l.entryCount>1?` · 총 ${l.entryCount}회 기록`:""}</div>
     <div style="margin:12px 0;display:flex;gap:8px;">
       <span class="dir-badge dir-${l.dir}">${l.dirLabel}</span>
       <span class="conf-badge conf-${l.conf}">${l.confLabel}</span>
@@ -834,7 +882,11 @@ function openLifeDetail(name){
     </div>
     <div class="obs-list">
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-bottom:6px;">근거 소스</div>
-      <ul class="src-list">${l.sources.map(s=>`<li>· ${linkify(s)}</li>`).join("")}</ul>
+      <ul class="src-list">${parseSources(l.sources).map(s=>`
+        <li>
+          ${s.title?`<div class="src-title">${escapeHtml(s.title)}</div>`:""}
+          ${s.url?`<a href="${s.url}" target="_blank" rel="noopener" class="src-url">${s.url}</a>`:""}
+        </li>`).join("")}</ul>
     </div>
   `;
   document.getElementById("detailOverlay").classList.add("show");
