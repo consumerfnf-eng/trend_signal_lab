@@ -96,6 +96,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 .gallery-item{display:block;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;}
 .cloud-word{font-family:var(--disp);font-weight:700;cursor:pointer;display:inline-block;transition:.15s;line-height:1;}
 .cloud-word:hover{opacity:.75;transform:scale(1.1) !important;}
+.brief-brand{margin-bottom:24px;}
+.brief-brand h3{font-family:var(--disp);font-size:16px;color:var(--rising);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.brief-item{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+.brief-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.brief-item-name{font-family:var(--disp);font-size:15px;}
+.brief-evidence{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;}
+.brief-quant{font-size:12px;color:var(--rising);margin-bottom:4px;}
+.brief-memo{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:8px;}
 .gallery-item img{width:100%;height:110px;object-fit:cover;display:block;}
 .gallery-item .gcap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));color:#fff;font-size:10px;font-family:var(--mono);padding:4px 6px;}
 
@@ -214,7 +222,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
     <span id="regionChips"></span>
     <input class="search" id="searchInput" placeholder="키워드 또는 #해시태그 검색…">
   </div>
-  <div class="section-label" id="gridLabel">전체 키워드</div>
+  <div class="section-label" id="gridLabel" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <span id="gridLabelText">전체 키워드</span>
+    <button class="btn" id="briefingBtn" style="font-size:11px;padding:7px 12px;">📋 이 조건으로 브리핑 생성</button>
+  </div>
   <div class="grid" id="grid"></div>
 </div>
 
@@ -245,6 +256,16 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 <!-- Photo Lightbox -->
 <div class="overlay" id="lightboxOverlay" onclick="this.classList.remove('show')">
   <img id="lightboxImg" src="" alt="" style="max-width:90vw;max-height:90vh;border-radius:8px;">
+</div>
+
+<!-- Category Briefing -->
+<div class="overlay" id="briefingOverlay">
+  <div class="modal" style="max-width:760px;position:relative;">
+    <button class="modal-close" id="briefingClose">✕</button>
+    <h2 id="briefingTitle">브리핑</h2>
+    <p style="font-size:12px;color:var(--dim);margin:0 0 18px;">현재 필터 조건(도메인·카테고리·지역)에 해당하는 🔥Rising · 🔵Emerging 신호를 브랜드별로 묶은 근거 요약입니다. 스타일링 판단은 이 근거를 보고 직접 내려주세요.</p>
+    <div id="briefingBody" style="max-height:65vh;overflow-y:auto;padding:2px 4px;"></div>
+  </div>
 </div>
 
 <!-- Hashtag Cloud -->
@@ -456,7 +477,7 @@ function normBool(v){ return /^(y|yes|o|true|예|참|1)$/i.test(String(v).trim()
 
 /* ---------------- Load & parse ---------------- */
 function loadData(url){
-  if(!url){ RAW_ITEM_ROWS = demoRows(); processRows(RAW_ITEM_ROWS); return; }
+  if(!url || typeof Papa==="undefined"){ RAW_ITEM_ROWS = demoRows(); processRows(RAW_ITEM_ROWS); return; }
   Papa.parse(url,{
     download:true, header:true, skipEmptyLines:true,
     complete: res => {
@@ -488,7 +509,7 @@ function loadData(url){
 }
 
 function loadKnownData(url){
-  if(!url){ KNOWN_LIST = []; if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS); return; }
+  if(!url || typeof Papa==="undefined"){ KNOWN_LIST = []; if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS); return; }
   Papa.parse(url,{
     download:true, header:true, skipEmptyLines:true,
     complete: res=>{
@@ -500,7 +521,7 @@ function loadKnownData(url){
 }
 
 function loadLifeData(url){
-  if(!url){ processLifeRows(demoLifeRows()); return; }
+  if(!url || typeof Papa==="undefined"){ processLifeRows(demoLifeRows()); return; }
   Papa.parse(url,{
     download:true, header:true, skipEmptyLines:true,
     complete: res=>{
@@ -689,10 +710,60 @@ function openLightbox(url){
   document.getElementById("lightboxOverlay").classList.add("show");
 }
 
+function briefingPool(){
+  return ITEMS.filter(i=>
+    (state.domain==="전체"||i.domain===state.domain) &&
+    (state.cat==="전체"||i.cat===state.cat) &&
+    (state.region==="전체"||i.region===state.region) &&
+    (i.tier==="rising"||i.tier==="emerging")
+  );
+}
+function briefEvidenceBlock(i){
+  const latestObs = i.obs[i.obs.length-1];
+  return `
+    <div class="brief-item">
+      <div class="brief-item-head">
+        <span class="brief-item-name">${i.kw}</span>
+        <span class="tier-badge tier-${i.tier}" style="position:static;background:${i.tier==='rising'?'rgba(255,90,54,.15)':'rgba(91,140,255,.15)'};color:${tierColor(i.tier)};">${tierLabel(i.tier)}</span>
+      </div>
+      <div class="brief-evidence">${i.cat}${i.sub?" · "+i.sub:""}${i.material?" · "+i.material:""} · 관측 ${i.obsCount}회 · 소스 ${i.sourceCount}곳 · 최근 ${i.lastSeenDays}일 전</div>
+      ${latestObs.정량신호?`<div class="brief-quant">📊 ${escapeHtml(latestObs.정량신호)}</div>`:""}
+      ${latestObs.메모?`<div class="brief-memo">${escapeHtml(latestObs.메모)}</div>`:""}
+      <div class="tags">${i.hashtags.map(h=>`<span class="tag hashtag">${h}</span>`).join("")}</div>
+    </div>`;
+}
+function renderBriefing(){
+  const pool = briefingPool();
+  document.getElementById("briefingTitle").textContent = `${state.domain} · ${state.cat} 브리핑`;
+  const body = document.getElementById("briefingBody");
+  if(!pool.length){
+    body.innerHTML = `<div class="empty" style="padding:30px 0;">현재 필터 조건에 해당하는 Rising/Emerging 신호가 없습니다. 다른 카테고리를 선택해보세요.</div>`;
+    return;
+  }
+  if(state.domain==="패션&뷰티" || state.domain==="전체"){
+    const brands = ["MLB","ST","Discovery","Duvetica"];
+    const html = brands.map(b=>{
+      const items = pool.filter(i=> i.brands.includes(b) || i.brands.includes("전체"));
+      if(!items.length) return "";
+      return `<div class="brief-brand"><h3>${b}</h3>${items.map(briefEvidenceBlock).join("")}</div>`;
+    }).join("");
+    const noBrand = pool.filter(i=> !i.brands.includes("MLB")&&!i.brands.includes("ST")&&!i.brands.includes("Discovery")&&!i.brands.includes("Duvetica")&&!i.brands.includes("전체"));
+    body.innerHTML = html + (noBrand.length?`<div class="brief-brand"><h3>기타/공통</h3>${noBrand.map(briefEvidenceBlock).join("")}</div>`:"") || `<div class="empty" style="padding:30px 0;">브랜드 매칭 항목이 없습니다.</div>`;
+  } else {
+    body.innerHTML = `<div class="brief-brand"><h3>${state.domain}</h3>${pool.map(briefEvidenceBlock).join("")}</div>`;
+  }
+}
+document.getElementById("briefingBtn").onclick = ()=>{
+  renderBriefing();
+  document.getElementById("briefingOverlay").classList.add("show");
+};
+document.getElementById("briefingClose").onclick = ()=> document.getElementById("briefingOverlay").classList.remove("show");
+document.getElementById("briefingOverlay").onclick = e=>{ if(e.target.id==="briefingOverlay") e.currentTarget.classList.remove("show"); };
+
 function render(){
   renderChips(); renderStats();
   const items = filtered();
-  document.getElementById("gridLabel").textContent = `${state.domain} · ${state.cat} · ${items.length}건`;
+  document.getElementById("gridLabelText").textContent = `${state.domain} · ${state.cat} · ${items.length}건`;
   const grid = document.getElementById("grid");
   if(!items.length){ grid.innerHTML=""; grid.parentElement.querySelector; }
   grid.innerHTML = items.length ? items.map(i=>`
