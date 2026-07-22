@@ -204,11 +204,28 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
 </div>
 
 <div class="tabbar">
-  <button class="tab-btn active" id="tabItemBtn">아이템 시그널</button>
+  <button class="tab-btn active" id="tabOverviewBtn">오버뷰</button>
+  <button class="tab-btn" id="tabItemBtn">아이템 시그널</button>
   <button class="tab-btn" id="tabLifeBtn">라이프스타일 레이더</button>
 </div>
 
-<div class="view active" id="view-item">
+<div class="view active" id="view-overview">
+  <div class="stats" id="statsBarOverview"></div>
+
+  <div class="section-label">🔥 지금 가장 강한 신호 (전 도메인)</div>
+  <div class="grid" id="ovRising"></div>
+
+  <div class="section-label">📈 확산 중인 메가트렌드</div>
+  <div class="grid" id="ovMega"></div>
+
+  <div class="section-label">🏷 브랜드별 스냅샷</div>
+  <div id="ovBrands" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 32px 24px;"></div>
+
+  <div class="section-label">📰 최근 근거 소스</div>
+  <div id="ovSources" style="padding:0 32px 60px;display:grid;grid-template-columns:1fr 1fr;gap:20px;"></div>
+</div>
+
+<div class="view" id="view-item">
   <div class="stats" id="statsBar"></div>
   <div class="filters" id="filterBar">
     <span id="domainChips"></span>
@@ -587,6 +604,7 @@ function processLifeRows(rows){
   }));
   renderLife();
   render(); // 아이템 카드에도 연결 태그 반영
+  renderOverview();
 }
 
 /* ---------------- Signal engine ---------------- */
@@ -634,6 +652,89 @@ function processRows(rows){
   });
   ITEMS.sort((a,b)=> (b.tier==="rising")-(a.tier==="rising") || b.obsCount-a.obsCount);
   render();
+  renderOverview();
+}
+
+/* ---------------- Overview tab ---------------- */
+function renderOverview(){
+  const totalItems = ITEMS.length;
+  const totalLife = LIFE.length;
+  const risingCount = ITEMS.filter(i=>i.tier==="rising").length;
+  const megaCount = LIFE.filter(l=>l.dir==="expanding" && (l.conf==="crossverified"||l.conf==="established")).length;
+  document.getElementById("statsBarOverview").innerHTML = `
+    <div class="stat"><div class="stat-num">${totalItems}</div><div class="stat-label">누적 아이템 관측</div></div>
+    <div class="stat rising"><div class="stat-num">${risingCount}</div><div class="stat-label">🔥 아이템 Rising</div></div>
+    <div class="stat"><div class="stat-num">${totalLife}</div><div class="stat-label">누적 라이프스타일 트렌드</div></div>
+    <div class="stat rising"><div class="stat-num">${megaCount}</div><div class="stat-label">📈 확산중 메가트렌드(검증됨)</div></div>
+  `;
+
+  const risingItems = ITEMS.filter(i=>i.tier==="rising").sort((a,b)=>b.obsCount-a.obsCount).slice(0,6);
+  const ovRising = document.getElementById("ovRising");
+  ovRising.innerHTML = risingItems.length ? risingItems.map(i=>`
+    <div class="card tier-${i.tier}" data-kw="${i.kw.replace(/"/g,"&quot;")}">
+      <div class="card-top">
+        <div class="card-title">${i.kw}</div>
+        <div class="tier-badge">${tierLabel(i.tier)}</div>
+      </div>
+      <div class="card-meta">${i.domain} · ${i.cat}${i.sub?" · "+i.sub:""}</div>
+      <div class="sparkwrap">${sparkSVG(i.weeks, tierColor(i.tier))}</div>
+      <div class="card-stats"><span><b>${i.obsCount}</b> 관측</span><span><b>${i.sourceCount}</b> 소스</span></div>
+    </div>
+  `).join("") : `<div class="empty">아직 Rising 신호가 없습니다.</div>`;
+  ovRising.querySelectorAll(".card").forEach(c=> c.onclick = ()=>{ switchTab("tabItemBtn","view-item"); openDetail(c.dataset.kw); });
+
+  const confOrder={established:0,crossverified:1,hypothesis:2};
+  const mega = LIFE.filter(l=>l.dir==="expanding").sort((a,b)=> confOrder[a.conf]-confOrder[b.conf] || (b.entryCount||1)-(a.entryCount||1)).slice(0,6);
+  const ovMega = document.getElementById("ovMega");
+  ovMega.innerHTML = mega.length ? mega.map(l=>`
+    <div class="card" data-life="${l.name.replace(/"/g,"&quot;")}">
+      <div class="card-top">
+        <div class="card-title">${l.name}</div>
+        <div class="dir-badge dir-${l.dir}">${l.dirLabel}</div>
+      </div>
+      <div class="card-meta"><span class="type-tag">${l.type}</span> · ${l.firstMonth} → ${l.lastMonth}</div>
+      <div style="margin:8px 0;"><span class="conf-badge conf-${l.conf}">${l.confLabel}</span>${l.entryCount>1?` <span class="type-tag">기록 ${l.entryCount}건</span>`:""}</div>
+      <div class="tags">${l.hashtags.slice(0,4).map(h=>`<span class="tag hashtag">${h}</span>`).join("")}</div>
+    </div>
+  `).join("") : `<div class="empty">확산중인 트렌드가 아직 없습니다.</div>`;
+  ovMega.querySelectorAll(".card").forEach(c=> c.onclick = ()=>{ switchTab("tabLifeBtn","view-life"); openLifeDetail(c.dataset.life); });
+
+  const brands = ["MLB","ST","Discovery","Duvetica"];
+  const ovBrands = document.getElementById("ovBrands");
+  ovBrands.innerHTML = brands.map(b=>{
+    const items = ITEMS.filter(i=> (i.brands.includes(b)||i.brands.includes("전체")) && (i.tier==="rising"||i.tier==="emerging"));
+    const risingN = items.filter(i=>i.tier==="rising").length;
+    return `
+      <div class="rcard" style="cursor:pointer;" data-brand="${b}">
+        <div class="body" style="padding:14px 16px;">
+          <div class="rc-cat">${b}</div>
+          <div class="rc-title" style="font-size:22px;margin-top:4px;">${items.length}<span style="font-size:12px;color:var(--muted);font-family:var(--body);"> 건</span></div>
+          <div style="font-size:11px;color:var(--rising);margin-top:4px;">🔥 Rising ${risingN}건</div>
+        </div>
+      </div>`;
+  }).join("");
+  ovBrands.querySelectorAll("[data-brand]").forEach(el=> el.onclick = ()=>{
+    switchTab("tabItemBtn","view-item");
+    state.brand = el.dataset.brand; state.tier = "전체"; render();
+  });
+
+  const itemSources = [];
+  ITEMS.forEach(i=> i.obs.forEach(o=>{ if(o.출처링크) itemSources.push({name:i.kw, date:o.타임스탬프||"", url:o.출처링크}); }));
+  itemSources.sort((a,b)=> b.date.localeCompare(a.date));
+  const lifeSources = [];
+  LIFE.forEach(l=> parseSources(l.sources).forEach(s=>{ if(s.url) lifeSources.push({name:l.name, date:l.lastMonth||"", url:s.url, title:s.title}); }));
+  lifeSources.sort((a,b)=> b.date.localeCompare(a.date));
+
+  document.getElementById("ovSources").innerHTML = `
+    <div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:8px;">아이템 출처</div>
+      ${itemSources.slice(0,5).map(s=>`<div style="margin-bottom:8px;font-size:12px;"><a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);">${escapeHtml(s.name)}</a> <span style="color:var(--dim);">· ${s.date}</span></div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
+    </div>
+    <div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:8px;">트렌드 출처</div>
+      ${lifeSources.slice(0,5).map(s=>`<div style="margin-bottom:8px;font-size:12px;"><a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);">${escapeHtml(s.title||s.name)}</a> <span style="color:var(--dim);">· ${escapeHtml(s.name)}</span></div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
+    </div>
+  `;
 }
 
 /* ---------------- Rendering ---------------- */
@@ -1019,18 +1120,13 @@ function openLifeDetail(name){
 document.getElementById("searchInputLife").oninput = e=>{ stateLife.q=e.target.value; renderLife(); };
 
 /* ---------------- Tab switching ---------------- */
-document.getElementById("tabItemBtn").onclick = ()=>{
-  document.getElementById("tabItemBtn").classList.add("active");
-  document.getElementById("tabLifeBtn").classList.remove("active");
-  document.getElementById("view-item").classList.add("active");
-  document.getElementById("view-life").classList.remove("active");
-};
-document.getElementById("tabLifeBtn").onclick = ()=>{
-  document.getElementById("tabLifeBtn").classList.add("active");
-  document.getElementById("tabItemBtn").classList.remove("active");
-  document.getElementById("view-life").classList.add("active");
-  document.getElementById("view-item").classList.remove("active");
-};
+function switchTab(tabId, viewId){
+  ["tabOverviewBtn","tabItemBtn","tabLifeBtn"].forEach(id=> document.getElementById(id).classList.toggle("active", id===tabId));
+  ["view-overview","view-item","view-life"].forEach(id=> document.getElementById(id).classList.toggle("active", id===viewId));
+}
+document.getElementById("tabOverviewBtn").onclick = ()=>{ switchTab("tabOverviewBtn","view-overview"); renderOverview(); };
+document.getElementById("tabItemBtn").onclick = ()=> switchTab("tabItemBtn","view-item");
+document.getElementById("tabLifeBtn").onclick = ()=> switchTab("tabLifeBtn","view-life");
 
 document.getElementById("configBtn").onclick = ()=>{
   document.getElementById("csvUrlInput").value = SHEET_CSV_URL;
