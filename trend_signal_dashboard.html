@@ -728,11 +728,21 @@ function renderOverview(){
   document.getElementById("ovSources").innerHTML = `
     <div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:8px;">아이템 출처</div>
-      ${itemSources.slice(0,5).map(s=>`<div style="margin-bottom:8px;font-size:12px;"><a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);">${escapeHtml(s.name)}</a> <span style="color:var(--dim);">· ${s.date}</span></div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
+      ${itemSources.slice(0,5).map(s=>`
+        <div style="margin-bottom:12px;padding-left:10px;border-left:2px solid var(--border);">
+          <div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:3px;">${escapeHtml(s.name)}</div>
+          <a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);font-family:var(--mono);font-size:11px;text-decoration:none;">🔗 원문보기</a>
+          <span style="color:var(--dim);font-size:11px;"> · ${s.date}</span>
+        </div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
     </div>
     <div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:8px;">트렌드 출처</div>
-      ${lifeSources.slice(0,5).map(s=>`<div style="margin-bottom:8px;font-size:12px;"><a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);">${escapeHtml(s.title||s.name)}</a> <span style="color:var(--dim);">· ${escapeHtml(s.name)}</span></div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
+      ${lifeSources.slice(0,5).map(s=>`
+        <div style="margin-bottom:12px;padding-left:10px;border-left:2px solid var(--border);">
+          <div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:3px;">${escapeHtml(s.title||s.name)}</div>
+          <a href="${s.url}" target="_blank" rel="noopener" style="color:var(--emerging);font-family:var(--mono);font-size:11px;text-decoration:none;">🔗 원문보기</a>
+          <span style="color:var(--dim);font-size:11px;"> · ${escapeHtml(s.name)}</span>
+        </div>`).join("") || `<div class="empty" style="padding:10px 0;">없음</div>`}
     </div>
   `;
 }
