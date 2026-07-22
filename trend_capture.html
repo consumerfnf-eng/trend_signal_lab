@@ -116,6 +116,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
   </div>
   <div style="display:flex;gap:10px;align-items:center;">
     <a class="backlink" href="./trend_signal_dashboard.html">← 시그널 대시보드로</a>
+    <button class="btn" id="quickFillBtn">🪄 빠른 입력</button>
     <button class="btn" id="configBtn">⚙ 연동 설정</button>
   </div>
 </div>
@@ -309,6 +310,19 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="overlay" id="quickFillOverlay">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" id="quickFillClose">✕</button>
+    <h2>빠른 입력</h2>
+    <p style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:-6px;">
+      Claude 채팅에서 기사를 분석해서 받은 텍스트 블록을 그대로 붙여넣으세요.
+      [ITEM], [LIFE] 섹션에 있는 값이 각 탭 필드에 자동으로 채워집니다.
+    </p>
+    <textarea id="quickFillInput" placeholder="[ITEM]&#10;키워드=...&#10;도메인=...&#10;...&#10;&#10;[LIFE]&#10;트렌드명=...&#10;..." style="width:100%;min-height:220px;background:var(--panel-2);border:2px solid var(--border);border-radius:12px;padding:12px;font-family:var(--body);font-size:13px;margin:10px 0 16px;"></textarea>
+    <button class="btn primary" id="quickFillApplyBtn">채우기</button>
+  </div>
+</div>
 
 <div class="overlay" id="configOverlay">
   <div class="modal">
@@ -671,6 +685,86 @@ $("lifeSaveBtn").onclick = async ()=>{
   }finally{
     $("lifeSaveBtn").disabled = false; $("lifeSaveBtn").textContent = "이 트렌드 저장";
   }
+};
+
+/* ====================== 빠른 입력(Quick Fill) ====================== */
+function parseQuickFill(text){
+  const sections = {ITEM:{}, LIFE:{}};
+  let current = null;
+  text.split("\n").forEach(raw=>{
+    const line = raw.trim();
+    if(line === "[ITEM]"){ current="ITEM"; return; }
+    if(line === "[LIFE]"){ current="LIFE"; return; }
+    if(!line || !current) return;
+    const idx = line.indexOf("=");
+    if(idx<0) return;
+    const key = line.slice(0,idx).trim();
+    const val = line.slice(idx+1).trim().replace(/\\n/g,"\n");
+    sections[current][key] = val;
+  });
+  return sections;
+}
+function clickChip(container, val){
+  if(!val) return;
+  const btn = document.querySelector(`${container} .tchip[data-val="${val.trim()}"]`);
+  if(btn) btn.click();
+}
+function applyItemFill(d){
+  if(!Object.keys(d).length) return;
+  if(d.키워드) $("kwInput").value = d.키워드;
+  if(d.도메인 && $("domainSelect").value !== d.도메인){
+    $("domainSelect").value = d.도메인;
+    $("domainSelect").dispatchEvent(new Event("change"));
+  }
+  if(d.카테고리){
+    $("catSelect").value = d.카테고리;
+    $("catSelect").dispatchEvent(new Event("change"));
+  }
+  if(d.서브카테고리){
+    if($("subSelect").style.display !== "none") $("subSelect").value = d.서브카테고리;
+    else $("subInput").value = d.서브카테고리;
+  }
+  if(d.소재) $("materialInput").value = d.소재;
+  if(d.발견채널) $("chInput").value = d.발견채널;
+  clickChip("#srcChips", d.소스타입);
+  clickChip("#regionChips", d.지역);
+  if(d.브랜드태그){
+    const wanted = d.브랜드태그.split(",").map(s=>s.trim()).filter(Boolean);
+    if(!wanted.length || wanted.includes("전체")){
+      document.querySelector('#brandChips .tchip.brand-all').click();
+    } else {
+      wanted.forEach(b=> clickChip("#brandChips", b));
+    }
+  }
+  if(d.정량신호) $("quantInput").value = d.정량신호;
+  if(d.출처링크) $("sourceLinkInput").value = d.출처링크;
+  if(d.해시태그) $("hashtagInput").value = d.해시태그.split(",").map(s=>s.trim()).join(" ");
+  if(/^y$/i.test(d.기존언급||"") && !$("mainstreamChip").classList.contains("on")) $("mainstreamChip").click();
+  if(d.메모) $("memoInput").value = d.메모;
+}
+function applyLifeFill(d){
+  if(!Object.keys(d).length) return;
+  if(d.트렌드명) $("lifeNameInput").value = d.트렌드명;
+  if(d.유형) $("lifeTypeSelect").value = d.유형;
+  clickChip("#lifeDirChips", d.방향);
+  clickChip("#lifeConfChips", d.확신도);
+  clickChip("#lifeRegionChips", d.지역);
+  if(d.해시태그) $("lifeHashtagInput").value = d.해시태그.split(",").map(s=>s.trim()).join(" ");
+  if(d.연결아이템태그) $("lifeLinkInput").value = d.연결아이템태그;
+  if(d.근거소스) $("lifeSourceInput").value = d.근거소스;
+  if(d.최초포착월) $("lifeFirstMonth").value = d.최초포착월;
+  if(d.최근재확인월) $("lifeLastMonth").value = d.최근재확인월;
+}
+$("quickFillBtn").onclick = ()=> $("quickFillOverlay").classList.add("show");
+$("quickFillClose").onclick = ()=> $("quickFillOverlay").classList.remove("show");
+$("quickFillOverlay").onclick = e=>{ if(e.target.id==="quickFillOverlay") e.currentTarget.classList.remove("show"); };
+$("quickFillApplyBtn").onclick = ()=>{
+  const parsed = parseQuickFill($("quickFillInput").value);
+  applyItemFill(parsed.ITEM);
+  applyLifeFill(parsed.LIFE);
+  $("quickFillOverlay").classList.remove("show");
+  $("quickFillInput").value = "";
+  showToast("자동으로 채웠습니다 · 두 탭 다 검토 후 각각 저장해주세요");
 };
 </script>
 </body>
