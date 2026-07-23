@@ -535,6 +535,7 @@ function loadData(url){
         도메인:pick(r,["도메인","영역","분야"])||"패션&뷰티",
         카테고리:pick(r,["카테고리"])||"기타",
         서브카테고리:pick(r,["서브카테고리","디테일"]),
+        검색동의어:pick(r,["검색동의어"]),
         소재:pick(r,["소재"]),
         발견채널:pick(r,["발견채널","발견 채널"]),
         소스타입:pick(r,["소스타입","소스 타입"])||"니치",
@@ -570,9 +571,16 @@ function loadKnownData(url){
 
 let naverLoading = false;
 function pickNaverKeywords(){
-  const rising = ITEMS.filter(i=>i.tier==="rising").map(i=>i.kw);
-  const emerging = ITEMS.filter(i=>i.tier==="emerging").map(i=>i.kw);
-  return [...new Set([...rising, ...emerging])].slice(0,10);
+  const rising = ITEMS.filter(i=>i.tier==="rising");
+  const emerging = ITEMS.filter(i=>i.tier==="emerging");
+  const seen = new Set();
+  const picked = [];
+  [...rising, ...emerging].forEach(i=>{
+    if(seen.has(i.kw) || picked.length>=10) return;
+    seen.add(i.kw);
+    picked.push({ name: i.kw, term: (i.searchTerm||i.kw).split(",").map(s=>s.trim()).filter(Boolean)[0] || i.kw });
+  });
+  return picked;
 }
 function loadSocialMentions(url){
   if(!url || typeof Papa==="undefined"){ SOCIAL_MENTIONS = {}; renderOverview(); return; }
@@ -607,10 +615,10 @@ function loadSocialMentions(url){
 
 async function loadNaverLive(){
   const statusEl = document.getElementById("ovNaverStatus");
-  const keywords = pickNaverKeywords();
-  if(!NAVER_WEBAPP_URL || !keywords.length){
+  const picked = pickNaverKeywords();
+  if(!NAVER_WEBAPP_URL || !picked.length){
     NAVER_TRENDS = {};
-    if(statusEl) statusEl.textContent = keywords.length ? "" : "조회할 키워드가 없습니다";
+    if(statusEl) statusEl.textContent = picked.length ? "" : "조회할 키워드가 없습니다";
     renderOverview();
     return;
   }
@@ -618,7 +626,9 @@ async function loadNaverLive(){
   naverLoading = true;
   if(statusEl) statusEl.textContent = "네이버 데이터랩 실시간 조회 중…";
   try{
-    const url = NAVER_WEBAPP_URL + "?action=naverTrend&keywords=" + encodeURIComponent(keywords.join(","));
+    const names = picked.map(p=>p.name).join(",");
+    const terms = picked.map(p=>p.term).join(",");
+    const url = NAVER_WEBAPP_URL + "?action=naverTrend&names=" + encodeURIComponent(names) + "&terms=" + encodeURIComponent(terms);
     const res = await fetch(url);
     const json = await res.json();
     const map = {};
@@ -745,6 +755,7 @@ function processRows(rows){
     return {
       kw, domain: obs[0].도메인 || "패션&뷰티", cat: obs[0].카테고리, sub: obs[0].서브카테고리,
       region: obs[0].지역 || "전체", material: (obs.slice().reverse().find(o=>o.소재)||{}).소재 || "",
+      searchTerm: (obs.slice().reverse().find(o=>o.검색동의어)||{}).검색동의어 || "",
       brands: [...new Set(obs.flatMap(o=>o.브랜드태그.split(",").map(s=>s.trim())).filter(Boolean))],
       hashtags: [...new Set(obs.flatMap(o=>(o.해시태그||"").split(",").map(s=>s.trim())).filter(Boolean))],
       images: obs.flatMap(o=>(o.이미지URL||"").split("\n").map(s=>s.trim()).filter(Boolean)),
