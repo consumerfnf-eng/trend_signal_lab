@@ -42,10 +42,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 
 .entry-image{background:var(--panel-2);display:flex;flex-direction:column;}
 .image-url-row{padding:14px;border-bottom:2px solid var(--border);}
-.image-url-row input{width:100%;background:#FFFFFF;border:2px solid var(--border);color:var(--text);font-family:var(--body);font-size:14px;padding:10px 12px;border-radius:10px;}
+.image-url-row input,.image-url-row textarea{width:100%;background:#FFFFFF;border:2px solid var(--border);color:var(--text);font-family:var(--body);font-size:14px;padding:10px 12px;border-radius:10px;}
+.image-url-row textarea{min-height:56px;resize:vertical;}
 .image-preview{flex:1;min-height:340px;display:flex;align-items:center;justify-content:center;background:var(--panel-2);position:relative;}
 .image-preview img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
 .image-empty{color:var(--dim);font-family:var(--body);font-size:15px;text-align:center;padding:20px;z-index:1;line-height:1.6;}
+.preview-thumb-grid{display:flex;flex-wrap:wrap;gap:8px;padding:14px;align-content:flex-start;width:100%;height:100%;overflow-y:auto;}
+.preview-thumb{width:80px;height:80px;border-radius:10px;overflow:hidden;background:var(--panel-2);border:1px solid var(--border);position:relative;flex-shrink:0;}
+.preview-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.preview-thumb .image-empty{font-size:10px;padding:4px;display:flex;align-items:center;justify-content:center;height:100%;line-height:1.3;}
 
 .entry-panel{padding:28px 30px;}
 .eyebrow-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -131,7 +136,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
   <div class="entry-shell">
     <div class="entry-image">
       <div class="image-url-row">
-        <input id="imgUrlInput" placeholder="이미지 URL 붙여넣기 (또는 아래에서 파일 선택)">
+        <textarea id="imgUrlInput" placeholder="이미지 URL 붙여넣기 (여러 장이면 줄바꿈으로 구분, 또는 아래에서 파일 선택)"></textarea>
         <label for="imgFileInput" style="display:block;margin-top:8px;text-align:center;padding:9px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;">
           📎 URL이 없다면 여기서 사진 파일 선택 (작은 미리보기로 압축돼 시트에 바로 저장됨)
         </label>
@@ -236,7 +241,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
   <div class="entry-shell">
     <div class="entry-image">
       <div class="image-url-row">
-        <input id="lifeImgUrlInput" placeholder="대표 이미지 URL 붙여넣기 (선택, 없어도 됨)">
+        <textarea id="lifeImgUrlInput" placeholder="이미지 URL 붙여넣기 (선택, 여러 장이면 줄바꿈으로 구분)"></textarea>
         <label for="lifeImgFileInput" style="display:block;margin-top:8px;text-align:center;padding:9px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;">
           📎 또는 여기서 사진 파일 선택
         </label>
@@ -443,17 +448,34 @@ function resizeImageFile(file){
   });
 }
 
-$("imgUrlInput").addEventListener("input", e=>{
-  const url = e.target.value.trim();
-  const prev = $("imagePreview");
-  if(url){
-    pendingImageDataUrl = null; $("imgFileInput").value = "";
-    prev.innerHTML = `<img src="${url}" alt="">`;
-    $("origLink").href = url; $("origLink").style.display = "inline-block";
-  } else if(!pendingImageDataUrl) {
-    prev.innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
-    $("origLink").style.display = "none";
+function renderImagePreview(prevEl, urls){
+  if(!urls.length){
+    prevEl.innerHTML = `<div class="image-empty">이미지 URL을 붙여넣으면<br>여기 미리보기가 뜹니다</div>`;
+    return;
   }
+  if(urls.length === 1){
+    prevEl.innerHTML = `<div class="preview-thumb" style="width:100%;height:100%;border-radius:0;border:none;"><img src="${urls[0]}" alt=""></div>`;
+  } else {
+    prevEl.innerHTML = `<div class="preview-thumb-grid">${urls.map(u=>`<div class="preview-thumb"><img src="${u}" alt=""></div>`).join("")}</div>`;
+  }
+  prevEl.querySelectorAll("img").forEach(img=>{
+    img.addEventListener("error", function(){
+      const wrap = this.parentElement;
+      this.remove();
+      const msg = document.createElement("div");
+      msg.className = "image-empty";
+      msg.textContent = "⚠️ 불러오기 실패";
+      wrap.appendChild(msg);
+    }, { once:true });
+  });
+}
+
+$("imgUrlInput").addEventListener("input", e=>{
+  const urls = e.target.value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(urls.length){ pendingImageDataUrl = null; $("imgFileInput").value = ""; }
+  renderImagePreview($("imagePreview"), urls);
+  if(urls.length){ $("origLink").href = urls[0]; $("origLink").style.display = "inline-block"; }
+  else if(!pendingImageDataUrl){ $("origLink").style.display = "none"; }
 });
 
 $("imgFileInput").addEventListener("change", async e=>{
@@ -475,14 +497,9 @@ $("imgFileInput").addEventListener("change", async e=>{
 
 let pendingLifeImageDataUrl = null;
 $("lifeImgUrlInput").addEventListener("input", e=>{
-  const url = e.target.value.trim();
-  const prev = $("lifeImagePreview");
-  if(url){
-    pendingLifeImageDataUrl = null; $("lifeImgFileInput").value = "";
-    prev.innerHTML = `<img src="${url}" alt="">`;
-  } else if(!pendingLifeImageDataUrl){
-    prev.innerHTML = `<div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>`;
-  }
+  const urls = e.target.value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(urls.length){ pendingLifeImageDataUrl = null; $("lifeImgFileInput").value = ""; }
+  renderImagePreview($("lifeImagePreview"), urls);
 });
 $("lifeImgFileInput").addEventListener("change", async e=>{
   const file = e.target.files[0];
@@ -780,7 +797,11 @@ function applyItemFill(d){
   if(d.해시태그) $("hashtagInput").value = d.해시태그.split(",").map(s=>s.trim()).join(" ");
   if(/^y$/i.test(d.기존언급||"") && !$("mainstreamChip").classList.contains("on")) $("mainstreamChip").click();
   if(d.메모) $("memoInput").value = d.메모;
-  if(d.이미지URL){ $("imgUrlInput").value = d.이미지URL; $("imgUrlInput").dispatchEvent(new Event("input")); }
+  if(d.이미지URL){
+    const urls = d.이미지URL.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);
+    $("imgUrlInput").value = urls.join("\n");
+    $("imgUrlInput").dispatchEvent(new Event("input"));
+  }
 }
 function applyLifeFill(d){
   if(!Object.keys(d).length) return;
@@ -794,7 +815,11 @@ function applyLifeFill(d){
   if(d.근거소스) $("lifeSourceInput").value = d.근거소스;
   if(d.최초포착월) $("lifeFirstMonth").value = d.최초포착월;
   if(d.최근재확인월) $("lifeLastMonth").value = d.최근재확인월;
-  if(d.이미지URL){ $("lifeImgUrlInput").value = d.이미지URL; $("lifeImgUrlInput").dispatchEvent(new Event("input")); }
+  if(d.이미지URL){
+    const urls = d.이미지URL.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);
+    $("lifeImgUrlInput").value = urls.join("\n");
+    $("lifeImgUrlInput").dispatchEvent(new Event("input"));
+  }
 }
 $("quickFillBtn").onclick = ()=> $("quickFillOverlay").classList.add("show");
 $("quickFillClose").onclick = ()=> $("quickFillOverlay").classList.remove("show");
