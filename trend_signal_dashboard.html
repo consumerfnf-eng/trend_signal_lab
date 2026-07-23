@@ -227,6 +227,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
   </div>
   <div id="ovNaver" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:0 32px 24px;"></div>
 
+  <div class="section-label">🗣 소셜 언급량 (썸트렌드)</div>
+  <div id="ovSocial" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;padding:0 32px 24px;"></div>
+
   <div class="section-label">📰 최근 근거 소스</div>
   <div id="ovSources" style="padding:0 32px 60px;display:grid;grid-template-columns:1fr 1fr;gap:20px;"></div>
 </div>
@@ -376,6 +379,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
       캡처 페이지와 같은 Apps Script URL이에요 (doGet에 네이버 실시간 조회 기능이 추가돼 있어야 합니다). 오버뷰 열 때마다 그 자리에서 네이버 검색량을 조회합니다.
     </p>
 
+    <hr style="border:none;border-top:1px solid var(--border);margin:22px 0;">
+
+    <label>소셜 언급량(썸트렌드) · Published CSV URL</label>
+    <input id="csvUrlInputSocial" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+    <p style="font-size:11px;color:var(--dim);line-height:1.6;">
+      썸트렌드 CSV를 Claude한테 주면 붙여넣기용 데이터로 변환해줍니다. 그걸 "소셜언급량" 탭에 붙여넣으면 여기 자동 반영돼요.
+    </p>
+
     <button class="btn primary" id="csvApplyBtn" style="margin-top:18px;width:100%;">모든 URL 적용해서 불러오기</button>
   </div>
 </div>
@@ -390,11 +401,14 @@ const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9I
 const DEFAULT_LIFE_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=라이프스타일";
 const DEFAULT_KNOWN_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=기존리포트키워드";
 const DEFAULT_NAVER_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxJYgooPcfF9X9w7RR1xwys0ylKDNVozjhJQZ8tev7k_x8rvyheDqYYl14CwBZ6uiWLaQ/exec";
+const DEFAULT_SOCIAL_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=소셜언급량";
 
 let SHEET_CSV_URL = lsGet("trendSignal_sheetUrl", DEFAULT_SHEET_URL);
 let LIFESTYLE_CSV_URL = lsGet("trendSignal_lifeUrl", DEFAULT_LIFE_URL);
 let KNOWN_CSV_URL = lsGet("trendSignal_knownUrl", DEFAULT_KNOWN_URL);
 let NAVER_WEBAPP_URL = lsGet("trendSignal_naverWebappUrl", DEFAULT_NAVER_WEBAPP_URL);
+let SOCIAL_CSV_URL = lsGet("trendSignal_socialUrl", DEFAULT_SOCIAL_URL);
+let SOCIAL_MENTIONS = {}; // 키워드 -> { total, weekly:[{date,count}], channels:[{name,count}] }
 let NAVER_TRENDS = {};
 /* ====================================================== */
 let RAW_ITEM_ROWS = [];
@@ -560,6 +574,37 @@ function pickNaverKeywords(){
   const emerging = ITEMS.filter(i=>i.tier==="emerging").map(i=>i.kw);
   return [...new Set([...rising, ...emerging])].slice(0,10);
 }
+function loadSocialMentions(url){
+  if(!url || typeof Papa==="undefined"){ SOCIAL_MENTIONS = {}; renderOverview(); return; }
+  Papa.parse(url,{
+    download:true, header:true, skipEmptyLines:true,
+    complete: res=>{
+      const rows = (res.data||[]).map(r=>({
+        키워드: pick(r,["키워드"]),
+        매체: pick(r,["매체"]),
+        기간유형: pick(r,["기간유형"]),
+        날짜: pick(r,["날짜"]),
+        언급량: parseFloat(pick(r,["언급량"]))
+      })).filter(r=>r.키워드 && !isNaN(r.언급량));
+      const map = {};
+      rows.forEach(r=>{
+        if(!map[r.키워드]) map[r.키워드] = { total:0, weekly:[], channels:[] };
+        const item = map[r.키워드];
+        if(r.기간유형==="weekly" && r.매체==="전체"){
+          item.weekly.push({date:r.날짜, count:r.언급량});
+        } else if(r.기간유형==="summary"){
+          if(r.매체.indexOf("전체")===0){ item.total = r.언급량; }
+          else { item.channels.push({name:r.매체, count:r.언급량}); }
+        }
+      });
+      Object.values(map).forEach(item=> item.weekly.sort((a,b)=>a.date.localeCompare(b.date)));
+      SOCIAL_MENTIONS = map;
+      renderOverview();
+    },
+    error: ()=>{ SOCIAL_MENTIONS = {}; renderOverview(); }
+  });
+}
+
 async function loadNaverLive(){
   const statusEl = document.getElementById("ovNaverStatus");
   const keywords = pickNaverKeywords();
@@ -797,6 +842,32 @@ function renderOverview(){
     </div>`;
   }).join("") : `<div class="empty" style="padding:16px 0;">${NAVER_WEBAPP_URL?"검색 데이터가 있는 키워드가 없습니다 (세부 실루엣명은 검색량이 잘 안 잡혀요)":"⚙ 설정에서 Web App URL을 연결해주세요"}</div>`;
   ovNaver.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=>{
+    switchTab("tabItemBtn","view-item");
+    document.getElementById("searchInput").value = el.dataset.kw;
+    state.q = el.dataset.kw; render();
+  });
+
+  const socialEntries = Object.entries(SOCIAL_MENTIONS).map(([kw,item])=>{
+    if(!item.weekly.length) return null;
+    const topChannel = item.channels.slice().sort((a,b)=>b.count-a.count)[0];
+    const series = item.weekly.slice(-12).map(w=>w.count);
+    return {kw, total:item.total||item.weekly.reduce((s,w)=>s+w.count,0), topChannel, series};
+  }).filter(Boolean).sort((a,b)=>b.total-a.total);
+  const ovSocial = document.getElementById("ovSocial");
+  ovSocial.innerHTML = socialEntries.length ? socialEntries.map(e=>`
+    <div class="rcard" style="cursor:pointer;" data-kw="${e.kw.replace(/"/g,"&quot;")}">
+      <div class="body" style="padding:12px 14px;">
+        <div class="rc-cat">${e.kw}</div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px;">
+          <span style="font-family:var(--disp);font-size:20px;">${e.total.toLocaleString()}</span>
+          <span style="color:var(--muted);font-family:var(--mono);font-size:11px;">건</span>
+        </div>
+        ${e.topChannel?`<div style="font-size:11px;color:var(--dim);margin-top:2px;">${e.topChannel.name} 최다 (${e.topChannel.count.toLocaleString()}건)</div>`:""}
+        <div style="margin-top:6px;">${sparkSVG(e.series, "var(--link)", 180, 30)}</div>
+      </div>
+    </div>
+  `).join("") : `<div class="empty" style="padding:16px 0;">소셜언급량 데이터가 없습니다. 썸트렌드 CSV를 캡처해서 알려주시면 추가해드려요.</div>`;
+  ovSocial.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=>{
     switchTab("tabItemBtn","view-item");
     document.getElementById("searchInput").value = el.dataset.kw;
     state.q = el.dataset.kw; render();
@@ -1234,6 +1305,7 @@ document.getElementById("configBtn").onclick = ()=>{
   document.getElementById("csvUrlInputLife").value = LIFESTYLE_CSV_URL;
   document.getElementById("csvUrlInputKnown").value = KNOWN_CSV_URL;
   document.getElementById("csvUrlInputNaver").value = NAVER_WEBAPP_URL;
+  document.getElementById("csvUrlInputSocial").value = SOCIAL_CSV_URL;
   document.getElementById("configOverlay").classList.add("show");
 };
 document.getElementById("configClose").onclick = ()=> document.getElementById("configOverlay").classList.remove("show");
@@ -1243,22 +1315,26 @@ document.getElementById("csvApplyBtn").onclick = ()=>{
   LIFESTYLE_CSV_URL = document.getElementById("csvUrlInputLife").value.trim();
   KNOWN_CSV_URL = document.getElementById("csvUrlInputKnown").value.trim();
   NAVER_WEBAPP_URL = document.getElementById("csvUrlInputNaver").value.trim();
+  SOCIAL_CSV_URL = document.getElementById("csvUrlInputSocial").value.trim();
   lsSet("trendSignal_sheetUrl", SHEET_CSV_URL);
   lsSet("trendSignal_lifeUrl", LIFESTYLE_CSV_URL);
   lsSet("trendSignal_knownUrl", KNOWN_CSV_URL);
   lsSet("trendSignal_naverWebappUrl", NAVER_WEBAPP_URL);
+  lsSet("trendSignal_socialUrl", SOCIAL_CSV_URL);
   document.getElementById("configOverlay").classList.remove("show");
   loadData(SHEET_CSV_URL);
   loadLifeData(LIFESTYLE_CSV_URL);
   loadKnownData(KNOWN_CSV_URL);
   loadNaverLive();
+  loadSocialMentions(SOCIAL_CSV_URL);
 };
-document.getElementById("reloadBtn").onclick = ()=>{ loadData(SHEET_CSV_URL); loadLifeData(LIFESTYLE_CSV_URL); loadKnownData(KNOWN_CSV_URL); loadNaverLive(); };
+document.getElementById("reloadBtn").onclick = ()=>{ loadData(SHEET_CSV_URL); loadLifeData(LIFESTYLE_CSV_URL); loadKnownData(KNOWN_CSV_URL); loadNaverLive(); loadSocialMentions(SOCIAL_CSV_URL); };
 document.getElementById("searchInput").oninput = e=>{ state.q=e.target.value; render(); };
 
 loadData(SHEET_CSV_URL);
 loadLifeData(LIFESTYLE_CSV_URL);
 loadKnownData(KNOWN_CSV_URL);
+loadSocialMentions(SOCIAL_CSV_URL);
 setTimeout(loadNaverLive, 800); // 아이템 데이터 로드를 기다렸다가 Rising/Emerging 키워드로 조회
 </script>
 </body>
