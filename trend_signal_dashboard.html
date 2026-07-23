@@ -587,7 +587,7 @@ function processLifeRows(rows){
       hashtags: [...new Set(entries.flatMap(e=>(e.해시태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
       linkedItems: [...new Set(entries.flatMap(e=>(e.연결아이템태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
       sources: entries.flatMap(e=>(e.근거소스||"").split("\n").map(s=>s.trim()).filter(Boolean)),
-      images: entries.map(e=>e.이미지URL).filter(Boolean),
+      images: entries.flatMap(e=>(e.이미지URL||"").split("\n").map(s=>s.trim()).filter(Boolean)),
       firstMonth: months[0] || latest.최초포착월,
       lastMonth: latest.최근재확인월,
       entryCount: entries.length
@@ -648,6 +648,7 @@ function processRows(rows){
       region: obs[0].지역 || "전체", material: (obs.slice().reverse().find(o=>o.소재)||{}).소재 || "",
       brands: [...new Set(obs.flatMap(o=>o.브랜드태그.split(",").map(s=>s.trim())).filter(Boolean))],
       hashtags: [...new Set(obs.flatMap(o=>(o.해시태그||"").split(",").map(s=>s.trim())).filter(Boolean))],
+      images: obs.flatMap(o=>(o.이미지URL||"").split("\n").map(s=>s.trim()).filter(Boolean)),
       obsCount: obs.length, sourceCount: sources.size, lastSeenDays,
       weeks, tier, obs
     };
@@ -887,7 +888,7 @@ function render(){
       </div>
       <div class="card-meta">${i.domain} · ${i.cat}${i.sub?" · "+i.sub:""}${i.material?" · "+i.material:""}${i.region!=="전체"?" · "+i.region:""}</div>
       <div class="sparkwrap">${sparkSVG(i.weeks, tierColor(i.tier))}</div>
-      ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL).slice(-3).reverse(); return imgs.length?`<div class="thumb-strip">${imgs.map(o=>`<img src="${o.이미지URL}" data-photo-url="${o.이미지URL}" loading="lazy" alt="">`).join("")}${i.obs.filter(o=>o.이미지URL).length>3?`<div class="thumb-more">+${i.obs.filter(o=>o.이미지URL).length-3}</div>`:""}</div>`:""; })()}
+      ${i.images.length?`<div class="thumb-strip">${i.images.slice(-3).reverse().map(u=>`<img src="${u}" data-photo-url="${u}" loading="lazy" alt="">`).join("")}${i.images.length>3?`<div class="thumb-more">+${i.images.length-3}</div>`:""}</div>`:""}
       <div class="card-stats">
         <span><b>${i.obsCount}</b> 관측</span>
         <span><b>${i.sourceCount}</b> 소스</span>
@@ -944,9 +945,9 @@ function openDetail(kw){
       ${i.brands.map(b=>`<span class="tag">${b}</span>`).join("")}
       ${i.hashtags.map(h=>`<span class="tag hashtag" onclick="filterByHashtag('${h.replace(/'/g,"")}'); document.getElementById('detailOverlay').classList.remove('show');">${h}</span>`).join("")}
     </div>
-    ${(()=>{ const imgs=i.obs.filter(o=>o.이미지URL); return imgs.length?`
+    ${(()=>{ const imgs=i.obs.flatMap(o=>(o.이미지URL||"").split("\n").map(s=>s.trim()).filter(Boolean).map(u=>({url:u, 발견채널:o.발견채널, 타임스탬프:o.타임스탬프}))); return imgs.length?`
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-top:18px;">관측 이미지 (${imgs.length})</div>
-      <div class="gallery">${imgs.slice().reverse().map(o=>`<div class="gallery-item" data-url="${o.이미지URL.replace(/"/g,'&quot;')}"><img src="${o.이미지URL}" data-photo-url="${o.이미지URL}" loading="lazy" alt=""><span class="gcap">${o.발견채널} · ${o.타임스탬프}</span></div>`).join("")}</div>
+      <div class="gallery">${imgs.slice().reverse().map(o=>`<div class="gallery-item" data-url="${o.url.replace(/"/g,'&quot;')}"><img src="${o.url}" data-photo-url="${o.url}" loading="lazy" alt=""><span class="gcap">${o.발견채널} · ${o.타임스탬프}</span></div>`).join("")}</div>
     `:""; })()}
     <div class="obs-list">
       ${i.obs.slice().reverse().map(o=>`
