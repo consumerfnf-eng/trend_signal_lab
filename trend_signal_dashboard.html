@@ -343,7 +343,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
     <table class="spec-table">
       <tr><td>트렌드명</td><td>예: 아웃도어 생활화</td></tr>
       <tr><td>유형</td><td>소비태도 / 여가·취미 / 가치관 / 문화현상</td></tr>
-      <tr><td>방향</td><td>확산중 / 정체 / 소강</td></tr>
+      <tr><td>방향</td><td>확산중 / 유지 / 소강</td></tr>
       <tr><td>확신도</td><td>가설단계 / 교차확인 / 정착</td></tr>
       <tr><td>지역</td><td>전체 / 국내 / 글로벌 / 중국</td></tr>
       <tr><td>해시태그</td><td>#사우나,#웰니스 처럼 콤마 구분 — 클릭하면 같은 태그로 필터링됨</td></tr>
@@ -403,7 +403,7 @@ const DOMAIN_CATS = {
 const TYPES = ["전체","소비태도","여가·취미","가치관","문화현상"];
 const DIRECTIONS = [
   {key:"expanding",label:"확산중 ↑"},
-  {key:"steady",label:"정체 →"},
+  {key:"steady",label:"유지 →"},
   {key:"declining",label:"소강 ↓"}
 ];
 const CONFIDENCES = [
@@ -472,11 +472,11 @@ function demoLifeRows(){
      해시태그:"#러닝크루,#러닝,#소셜스포츠", 연결아이템태그:"",
      근거소스:"전국 러닝크루 수 증가 (언론보도)\n러닝 관련 인스타 해시태그 게시물 수 증가",
      최초포착월:"2025-11", 최근재확인월:"2026-07"},
-    {트렌드명:"헬시플레저", 유형:"가치관", 방향:"정체", 확신도:"정착",
+    {트렌드명:"헬시플레저", 유형:"가치관", 방향:"유지", 확신도:"정착",
      해시태그:"#헬시플레저,#웰니스", 연결아이템태그:"",
      근거소스:"웰니스 소비 리포트 지속 언급\n관련 언론기사 꾸준히 노출",
      최초포착월:"2025-09", 최근재확인월:"2026-06"},
-    {트렌드명:"조용한 소비(무지출 챌린지)", 유형:"소비태도", 방향:"정체", 확신도:"가설단계",
+    {트렌드명:"조용한 소비(무지출 챌린지)", 유형:"소비태도", 방향:"유지", 확신도:"가설단계",
      해시태그:"#무지출챌린지,#조용한소비", 연결아이템태그:"",
      근거소스:"유튜브 무지출챌린지 콘텐츠 증가",
      최초포착월:"2026-06", 최근재확인월:"2026-07"}
@@ -546,7 +546,7 @@ function loadLifeData(url){
       const rows = res.data.map(r=>({
         트렌드명:pick(r,["트렌드명"]),
         유형:pick(r,["유형"])||"문화현상",
-        방향:pick(r,["방향"])||"정체",
+        방향:pick(r,["방향"])||"유지",
         확신도:pick(r,["확신도"])||"가설단계",
         지역:pick(r,["지역","마켓","국가"])||"전체",
         해시태그:pick(r,["해시태그","해시 태그","관련카테고리","관련 카테고리"]),
@@ -562,7 +562,7 @@ function loadLifeData(url){
   });
 }
 
-const DIR_KEY = {"확산중":"expanding","정체":"steady","소강":"declining"};
+const DIR_KEY = {"확산중":"expanding","유지":"steady","정체":"steady","소강":"declining"};
 const CONF_KEY = {"가설단계":"hypothesis","교차확인":"crossverified","정착":"established"};
 
 function processLifeRows(rows){

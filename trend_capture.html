@@ -261,7 +261,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
         <div class="spec-label">방향</div>
         <div class="chiprow" id="lifeDirChips">
           <button class="tchip" data-val="확산중">확산중 ↑</button>
-          <button class="tchip on" data-val="정체">정체 →</button>
+          <button class="tchip on" data-val="유지">유지 →</button>
           <button class="tchip" data-val="소강">소강 ↓</button>
         </div>
       </div>
@@ -626,7 +626,7 @@ $("webappSaveBtn").onclick = ()=>{
 
 /* ====================== 라이프스타일 트렌드 탭 ====================== */
 const SHEET_NAME_LIFE = "라이프스타일";
-let lifeDir = "정체", lifeConf = "가설단계", lifeRegion = "전체";
+let lifeDir = "유지", lifeConf = "가설단계", lifeRegion = "전체";
 let recentLife = [];
 
 document.getElementById("tabItemBtn").onclick = ()=>{
@@ -667,7 +667,7 @@ function resetLifeForm(){
   pendingLifeImageDataUrl = null;
   $("lifeImagePreview").innerHTML = `<div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>`;
   document.querySelectorAll("#lifeDirChips .tchip").forEach(x=>x.classList.remove("on"));
-  document.querySelector('#lifeDirChips .tchip[data-val="정체"]').classList.add("on"); lifeDir="정체";
+  document.querySelector('#lifeDirChips .tchip[data-val="유지"]').classList.add("on"); lifeDir="유지";
   document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
   document.querySelector('#lifeConfChips .tchip[data-val="가설단계"]').classList.add("on"); lifeConf="가설단계";
   document.querySelectorAll("#lifeRegionChips .tchip").forEach(x=>x.classList.remove("on"));
