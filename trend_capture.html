@@ -227,6 +227,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 
       <a class="origlink" id="origLink" href="#" target="_blank" rel="noopener" style="display:none;">원본 이미지 열기 ↗</a>
 
+      <div id="itemQueueBar" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding:10px 14px;background:var(--panel-2);border-radius:12px;">
+        <button class="btn" id="itemQueuePrev" style="padding:6px 12px;font-size:13px;">◀ 이전</button>
+        <span id="itemQueueLabel" style="font-family:var(--disp);font-size:14px;color:var(--muted);">1 / 1</span>
+        <button class="btn" id="itemQueueNext" style="padding:6px 12px;font-size:13px;">다음 ▶</button>
+      </div>
       <button class="btn primary" id="saveBtn">이 관측 저장</button>
     </div>
   </div>
@@ -312,6 +317,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
         </div>
       </div>
 
+      <div id="lifeQueueBar" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding:10px 14px;background:var(--panel-2);border-radius:12px;">
+        <button class="btn" id="lifeQueuePrev" style="padding:6px 12px;font-size:13px;">◀ 이전</button>
+        <span id="lifeQueueLabel" style="font-family:var(--disp);font-size:14px;color:var(--muted);">1 / 1</span>
+        <button class="btn" id="lifeQueueNext" style="padding:6px 12px;font-size:13px;">다음 ▶</button>
+      </div>
       <button class="btn primary" id="lifeSaveBtn">이 트렌드 저장</button>
     </div>
   </div>
@@ -618,7 +628,12 @@ $("saveBtn").onclick = async ()=>{
     });
     renderRecent();
     showToast("저장했습니다 · 시트에서 확인해보세요 ✓");
-    resetForm();
+    if(itemQueue.length && itemQueueIndex < itemQueue.length-1){
+      loadItemQueueIndex(itemQueueIndex+1);
+    } else {
+      itemQueue = []; $("itemQueueBar").style.display = "none";
+      resetForm();
+    }
   }catch(err){
     showToast("저장 실패 — 네트워크 또는 URL을 확인해주세요", true);
   }finally{
@@ -735,7 +750,12 @@ $("lifeSaveBtn").onclick = async ()=>{
     recentLife.push(payload);
     renderRecentLife();
     showToast("저장했습니다 · 라이프스타일 시트에서 확인해보세요 ✓");
-    resetLifeForm();
+    if(lifeQueue.length && lifeQueueIndex < lifeQueue.length-1){
+      loadLifeQueueIndex(lifeQueueIndex+1);
+    } else {
+      lifeQueue = []; $("lifeQueueBar").style.display = "none";
+      resetLifeForm();
+    }
   }catch(err){
     showToast("저장 실패 — 네트워크 또는 URL을 확인해주세요", true);
   }finally{
@@ -745,18 +765,18 @@ $("lifeSaveBtn").onclick = async ()=>{
 
 /* ====================== 빠른 입력(Quick Fill) ====================== */
 function parseQuickFill(text){
-  const sections = {ITEM:{}, LIFE:{}};
-  let current = null;
+  const sections = {ITEM:[], LIFE:[]};
+  let current = null; // {type:"ITEM"|"LIFE", obj:{...}}
   text.split("\n").forEach(raw=>{
     const line = raw.trim();
-    if(line === "[ITEM]"){ current="ITEM"; return; }
-    if(line === "[LIFE]"){ current="LIFE"; return; }
+    if(line === "[ITEM]"){ current = {}; sections.ITEM.push(current); current._type="ITEM"; return; }
+    if(line === "[LIFE]"){ current = {}; sections.LIFE.push(current); current._type="LIFE"; return; }
     if(!line || !current) return;
     const idx = line.indexOf("=");
     if(idx<0) return;
     const key = line.slice(0,idx).trim();
     const val = line.slice(idx+1).trim().replace(/\\n/g,"\n");
-    sections[current][key] = val;
+    current[key] = val;
   });
   return sections;
 }
@@ -821,17 +841,51 @@ function applyLifeFill(d){
     $("lifeImgUrlInput").dispatchEvent(new Event("input"));
   }
 }
+let itemQueue = [], itemQueueIndex = 0;
+let lifeQueue = [], lifeQueueIndex = 0;
+
+function loadItemQueueIndex(i){
+  itemQueueIndex = i;
+  applyItemFill(itemQueue[i]);
+  $("itemQueueLabel").textContent = `${i+1} / ${itemQueue.length}`;
+  $("itemQueuePrev").disabled = i === 0;
+  $("itemQueueNext").disabled = i === itemQueue.length-1;
+}
+function loadLifeQueueIndex(i){
+  lifeQueueIndex = i;
+  applyLifeFill(lifeQueue[i]);
+  $("lifeQueueLabel").textContent = `${i+1} / ${lifeQueue.length}`;
+  $("lifeQueuePrev").disabled = i === 0;
+  $("lifeQueueNext").disabled = i === lifeQueue.length-1;
+}
+
 $("quickFillBtn").onclick = ()=> $("quickFillOverlay").classList.add("show");
 $("quickFillClose").onclick = ()=> $("quickFillOverlay").classList.remove("show");
 $("quickFillOverlay").onclick = e=>{ if(e.target.id==="quickFillOverlay") e.currentTarget.classList.remove("show"); };
 $("quickFillApplyBtn").onclick = ()=>{
   const parsed = parseQuickFill($("quickFillInput").value);
-  applyItemFill(parsed.ITEM);
-  applyLifeFill(parsed.LIFE);
+  itemQueue = parsed.ITEM; lifeQueue = parsed.LIFE;
+  if(itemQueue.length){
+    $("itemQueueBar").style.display = "flex";
+    loadItemQueueIndex(0);
+  } else {
+    $("itemQueueBar").style.display = "none";
+  }
+  if(lifeQueue.length){
+    $("lifeQueueBar").style.display = "flex";
+    loadLifeQueueIndex(0);
+  } else {
+    $("lifeQueueBar").style.display = "none";
+  }
   $("quickFillOverlay").classList.remove("show");
   $("quickFillInput").value = "";
-  showToast("자동으로 채웠습니다 · 두 탭 다 검토 후 각각 저장해주세요");
+  const total = itemQueue.length + lifeQueue.length;
+  showToast(total>1 ? `${total}개 항목 불러옴 · 하나씩 확인하고 저장해주세요` : "자동으로 채웠습니다 · 검토 후 저장해주세요");
 };
+$("itemQueuePrev").onclick = ()=>{ if(itemQueueIndex>0) loadItemQueueIndex(itemQueueIndex-1); };
+$("itemQueueNext").onclick = ()=>{ if(itemQueueIndex<itemQueue.length-1) loadItemQueueIndex(itemQueueIndex+1); };
+$("lifeQueuePrev").onclick = ()=>{ if(lifeQueueIndex>0) loadLifeQueueIndex(lifeQueueIndex-1); };
+$("lifeQueueNext").onclick = ()=>{ if(lifeQueueIndex<lifeQueue.length-1) loadLifeQueueIndex(lifeQueueIndex+1); };
 </script>
 </body>
 </html>
