@@ -221,6 +221,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
   <div class="section-label">🏷 브랜드별 스냅샷</div>
   <div id="ovBrands" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 32px 24px;"></div>
 
+  <div class="section-label">📈 네이버 검색량 급상승 (최근 1주)</div>
+  <div id="ovNaver" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:0 32px 24px;"></div>
+
   <div class="section-label">📰 최근 근거 소스</div>
   <div id="ovSources" style="padding:0 32px 60px;display:grid;grid-template-columns:1fr 1fr;gap:20px;"></div>
 </div>
@@ -362,6 +365,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);}
       개인 관측자가 몰라도, 여기 있는 키워드와 일치하면 자동으로 Mainstream 처리됩니다.
     </p>
 
+    <hr style="border:none;border-top:1px solid var(--border);margin:22px 0;">
+
+    <label>네이버 검색트렌드 · Published CSV URL</label>
+    <input id="csvUrlInputNaver" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+    <p style="font-size:11px;color:var(--dim);line-height:1.6;">
+      Apps Script가 매주 자동 수집하는 시트(컬럼: 키워드/날짜/검색량지수). 오버뷰에 검색량 급상승 키워드로 표시됩니다.
+    </p>
+
     <button class="btn primary" id="csvApplyBtn" style="margin-top:18px;width:100%;">모든 URL 적용해서 불러오기</button>
   </div>
 </div>
@@ -375,10 +386,13 @@ function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
 const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=아이템시그널";
 const DEFAULT_LIFE_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=라이프스타일";
 const DEFAULT_KNOWN_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=기존리포트키워드";
+const DEFAULT_NAVER_URL = "https://docs.google.com/spreadsheets/d/1rlqHFV4Vbfy9Iag_vEhqDO3dpjehsHp3oUCA75t0y3g/gviz/tq?tqx=out:csv&sheet=검색트렌드";
 
 let SHEET_CSV_URL = lsGet("trendSignal_sheetUrl", DEFAULT_SHEET_URL);
 let LIFESTYLE_CSV_URL = lsGet("trendSignal_lifeUrl", DEFAULT_LIFE_URL);
 let KNOWN_CSV_URL = lsGet("trendSignal_knownUrl", DEFAULT_KNOWN_URL);
+let NAVER_CSV_URL = lsGet("trendSignal_naverUrl", DEFAULT_NAVER_URL);
+let NAVER_TRENDS = {};
 /* ====================================================== */
 let RAW_ITEM_ROWS = [];
 let KNOWN_LIST = [];
@@ -534,6 +548,29 @@ function loadKnownData(url){
       if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS);
     },
     error: ()=>{ KNOWN_LIST = []; if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS); }
+  });
+}
+
+function loadNaverTrends(url){
+  if(!url || typeof Papa==="undefined"){ NAVER_TRENDS = {}; renderOverview(); return; }
+  Papa.parse(url,{
+    download:true, header:true, skipEmptyLines:true,
+    complete: res=>{
+      const rows = (res.data||[]).map(r=>({
+        키워드: pick(r,["키워드"]),
+        날짜: pick(r,["날짜","기간"]),
+        지수: parseFloat(pick(r,["검색량지수","지수"]))
+      })).filter(r=>r.키워드 && r.날짜 && !isNaN(r.지수));
+      const map = {};
+      rows.forEach(r=>{
+        if(!map[r.키워드]) map[r.키워드]=[];
+        map[r.키워드].push({period:r.날짜, ratio:r.지수});
+      });
+      Object.values(map).forEach(arr=> arr.sort((a,b)=>a.period.localeCompare(b.period)));
+      NAVER_TRENDS = map;
+      renderOverview();
+    },
+    error: ()=>{ NAVER_TRENDS = {}; renderOverview(); }
   });
 }
 
@@ -719,6 +756,31 @@ function renderOverview(){
   ovBrands.querySelectorAll("[data-brand]").forEach(el=> el.onclick = ()=>{
     switchTab("tabItemBtn","view-item");
     state.brand = el.dataset.brand; state.tier = "전체"; render();
+  });
+
+  const naverEntries = Object.entries(NAVER_TRENDS).map(([kw,arr])=>{
+    if(arr.length<2) return null;
+    const latest = arr[arr.length-1], prev = arr[arr.length-2];
+    const change = prev.ratio>0 ? ((latest.ratio-prev.ratio)/prev.ratio*100) : (latest.ratio>0?100:0);
+    return {kw, latest:latest.ratio, change, series: arr.slice(-8).map(s=>s.ratio)};
+  }).filter(Boolean).filter(e=>e.change>0).sort((a,b)=>b.change-a.change).slice(0,6);
+  const ovNaver = document.getElementById("ovNaver");
+  ovNaver.innerHTML = naverEntries.length ? naverEntries.map(e=>`
+    <div class="rcard" style="cursor:pointer;" data-kw="${e.kw.replace(/"/g,"&quot;")}">
+      <div class="body" style="padding:12px 14px;">
+        <div class="rc-cat">${e.kw}</div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px;">
+          <span style="font-family:var(--disp);font-size:20px;">${e.latest.toFixed(0)}</span>
+          <span style="color:var(--rising);font-family:var(--mono);font-size:12px;">▲${e.change.toFixed(0)}%</span>
+        </div>
+        <div style="margin-top:6px;">${sparkSVG(e.series, "var(--rising)", 180, 30)}</div>
+      </div>
+    </div>
+  `).join("") : `<div class="empty" style="padding:16px 0;">이번 주 급상승 검색어가 없습니다.</div>`;
+  ovNaver.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=>{
+    switchTab("tabItemBtn","view-item");
+    document.getElementById("searchInput").value = el.dataset.kw;
+    state.q = el.dataset.kw; render();
   });
 
   const itemSources = [];
@@ -1152,6 +1214,7 @@ document.getElementById("configBtn").onclick = ()=>{
   document.getElementById("csvUrlInput").value = SHEET_CSV_URL;
   document.getElementById("csvUrlInputLife").value = LIFESTYLE_CSV_URL;
   document.getElementById("csvUrlInputKnown").value = KNOWN_CSV_URL;
+  document.getElementById("csvUrlInputNaver").value = NAVER_CSV_URL;
   document.getElementById("configOverlay").classList.add("show");
 };
 document.getElementById("configClose").onclick = ()=> document.getElementById("configOverlay").classList.remove("show");
@@ -1160,20 +1223,24 @@ document.getElementById("csvApplyBtn").onclick = ()=>{
   SHEET_CSV_URL = document.getElementById("csvUrlInput").value.trim();
   LIFESTYLE_CSV_URL = document.getElementById("csvUrlInputLife").value.trim();
   KNOWN_CSV_URL = document.getElementById("csvUrlInputKnown").value.trim();
+  NAVER_CSV_URL = document.getElementById("csvUrlInputNaver").value.trim();
   lsSet("trendSignal_sheetUrl", SHEET_CSV_URL);
   lsSet("trendSignal_lifeUrl", LIFESTYLE_CSV_URL);
   lsSet("trendSignal_knownUrl", KNOWN_CSV_URL);
+  lsSet("trendSignal_naverUrl", NAVER_CSV_URL);
   document.getElementById("configOverlay").classList.remove("show");
   loadData(SHEET_CSV_URL);
   loadLifeData(LIFESTYLE_CSV_URL);
   loadKnownData(KNOWN_CSV_URL);
+  loadNaverTrends(NAVER_CSV_URL);
 };
-document.getElementById("reloadBtn").onclick = ()=>{ loadData(SHEET_CSV_URL); loadLifeData(LIFESTYLE_CSV_URL); loadKnownData(KNOWN_CSV_URL); };
+document.getElementById("reloadBtn").onclick = ()=>{ loadData(SHEET_CSV_URL); loadLifeData(LIFESTYLE_CSV_URL); loadKnownData(KNOWN_CSV_URL); loadNaverTrends(NAVER_CSV_URL); };
 document.getElementById("searchInput").oninput = e=>{ state.q=e.target.value; render(); };
 
 loadData(SHEET_CSV_URL);
 loadLifeData(LIFESTYLE_CSV_URL);
 loadKnownData(KNOWN_CSV_URL);
+loadNaverTrends(NAVER_CSV_URL);
 </script>
 </body>
 </html>
