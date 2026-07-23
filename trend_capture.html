@@ -234,9 +234,16 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);fon
 <div class="wrap view" id="view-life">
 
   <div class="entry-shell">
-    <div class="entry-image" style="display:flex;align-items:center;justify-content:center;padding:24px;">
-      <div class="image-empty" style="text-align:center;line-height:1.8;">
-        📰<br>라이프스타일 트렌드는<br>사진보다 <b style="color:var(--text)">근거 소스(기사·링크)</b>가<br>핵심이라 이미지 없이 갑니다
+    <div class="entry-image">
+      <div class="image-url-row">
+        <input id="lifeImgUrlInput" placeholder="대표 이미지 URL 붙여넣기 (선택, 없어도 됨)">
+        <label for="lifeImgFileInput" style="display:block;margin-top:8px;text-align:center;padding:9px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;">
+          📎 또는 여기서 사진 파일 선택
+        </label>
+        <input type="file" id="lifeImgFileInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="image-preview" id="lifeImagePreview">
+        <div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>
       </div>
     </div>
 
@@ -466,6 +473,33 @@ $("imgFileInput").addEventListener("change", async e=>{
   }
 });
 
+let pendingLifeImageDataUrl = null;
+$("lifeImgUrlInput").addEventListener("input", e=>{
+  const url = e.target.value.trim();
+  const prev = $("lifeImagePreview");
+  if(url){
+    pendingLifeImageDataUrl = null; $("lifeImgFileInput").value = "";
+    prev.innerHTML = `<img src="${url}" alt="">`;
+  } else if(!pendingLifeImageDataUrl){
+    prev.innerHTML = `<div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>`;
+  }
+});
+$("lifeImgFileInput").addEventListener("change", async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $("lifeImgUrlInput").value = "";
+  $("lifeImagePreview").innerHTML = `<div class="image-empty">사진 압축 중…</div>`;
+  try{
+    const dataUrl = await resizeImageFile(file);
+    pendingLifeImageDataUrl = dataUrl;
+    $("lifeImagePreview").innerHTML = `<img src="${dataUrl}" alt="">`;
+    showToast("사진 준비 완료");
+  }catch(err){
+    showToast("사진 처리 실패 — 다른 파일로 시도해주세요", true);
+    $("lifeImagePreview").innerHTML = `<div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>`;
+  }
+});
+
 document.querySelectorAll("#srcChips .tchip").forEach(b=> b.onclick = ()=>{
   document.querySelectorAll("#srcChips .tchip").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); selSrc = b.dataset.val;
@@ -628,7 +662,10 @@ document.querySelectorAll("#lifeRegionChips .tchip").forEach(b=> b.onclick = ()=
 });
 
 function resetLifeForm(){
-  ["lifeNameInput","lifeHashtagInput","lifeLinkInput","lifeSourceInput"].forEach(id=> $(id).value="");
+  ["lifeNameInput","lifeHashtagInput","lifeLinkInput","lifeSourceInput","lifeImgUrlInput"].forEach(id=> $(id).value="");
+  $("lifeImgFileInput").value = "";
+  pendingLifeImageDataUrl = null;
+  $("lifeImagePreview").innerHTML = `<div class="image-empty">📰<br>근거 소스가 핵심이라<br>이미지는 선택사항입니다</div>`;
   document.querySelectorAll("#lifeDirChips .tchip").forEach(x=>x.classList.remove("on"));
   document.querySelector('#lifeDirChips .tchip[data-val="정체"]').classList.add("on"); lifeDir="정체";
   document.querySelectorAll("#lifeConfChips .tchip").forEach(x=>x.classList.remove("on"));
@@ -642,6 +679,7 @@ function renderRecentLife(){
   if(!recentLife.length){ grid.innerHTML = `<div class="empty-recent">아직 저장한 트렌드가 없습니다.</div>`; return; }
   grid.innerHTML = recentLife.slice().reverse().map(r=>`
     <div class="rcard">
+      <div class="thumb">${r.이미지URL?`<img src="${r.이미지URL}" alt="">`:""}</div>
       <div class="body">
         <div class="rc-cat">${r.유형} · ${r.방향}</div>
         <div class="rc-title">${r.트렌드명}</div>
@@ -664,7 +702,8 @@ $("lifeSaveBtn").onclick = async ()=>{
     "연결아이템태그": $("lifeLinkInput").value.trim(),
     "근거소스": $("lifeSourceInput").value.trim(),
     "최초포착월": $("lifeFirstMonth").value,
-    "최근재확인월": $("lifeLastMonth").value
+    "최근재확인월": $("lifeLastMonth").value,
+    "이미지URL": pendingLifeImageDataUrl || $("lifeImgUrlInput").value.trim()
   };
   if(!WEBAPP_URL){
     showToast("먼저 ⚙ 설정에서 Web App URL을 연결해주세요", true);
@@ -754,6 +793,7 @@ function applyLifeFill(d){
   if(d.근거소스) $("lifeSourceInput").value = d.근거소스;
   if(d.최초포착월) $("lifeFirstMonth").value = d.최초포착월;
   if(d.최근재확인월) $("lifeLastMonth").value = d.최근재확인월;
+  if(d.이미지URL){ $("lifeImgUrlInput").value = d.이미지URL; $("lifeImgUrlInput").dispatchEvent(new Event("input")); }
 }
 $("quickFillBtn").onclick = ()=> $("quickFillOverlay").classList.add("show");
 $("quickFillClose").onclick = ()=> $("quickFillOverlay").classList.remove("show");

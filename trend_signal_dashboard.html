@@ -553,7 +553,8 @@ function loadLifeData(url){
         연결아이템태그:pick(r,["연결아이템태그","연결 아이템 태그"]),
         근거소스:pick(r,["근거소스","근거 소스"]),
         최초포착월:pick(r,["최초포착월","최초 포착월"]),
-        최근재확인월:pick(r,["최근재확인월","최근 재확인월"])
+        최근재확인월:pick(r,["최근재확인월","최근 재확인월"]),
+        이미지URL:pick(r,["이미지URL","이미지 URL"])
       })).filter(r=>r.트렌드명);
       processLifeRows(rows.length?rows:demoLifeRows());
     },
@@ -586,6 +587,7 @@ function processLifeRows(rows){
       hashtags: [...new Set(entries.flatMap(e=>(e.해시태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
       linkedItems: [...new Set(entries.flatMap(e=>(e.연결아이템태그||"").split(",").map(s=>s.trim()).filter(Boolean)))],
       sources: entries.flatMap(e=>(e.근거소스||"").split("\n").map(s=>s.trim()).filter(Boolean)),
+      images: entries.map(e=>e.이미지URL).filter(Boolean),
       firstMonth: months[0] || latest.최초포착월,
       lastMonth: latest.최근재확인월,
       entryCount: entries.length
@@ -681,7 +683,7 @@ function renderOverview(){
       <div class="card-stats"><span><b>${i.obsCount}</b> 관측</span><span><b>${i.sourceCount}</b> 소스</span></div>
     </div>
   `).join("") : `<div class="empty">아직 Rising 신호가 없습니다.</div>`;
-  ovRising.querySelectorAll(".card").forEach(c=> c.onclick = ()=>{ switchTab("tabItemBtn","view-item"); openDetail(c.dataset.kw); });
+  ovRising.querySelectorAll(".card").forEach(c=> c.onclick = ()=> openDetail(c.dataset.kw));
 
   const confOrder={established:0,crossverified:1,hypothesis:2};
   const mega = LIFE.filter(l=>l.dir==="expanding").sort((a,b)=> confOrder[a.conf]-confOrder[b.conf] || (b.entryCount||1)-(a.entryCount||1)).slice(0,6);
@@ -697,7 +699,7 @@ function renderOverview(){
       <div class="tags">${l.hashtags.slice(0,4).map(h=>`<span class="tag hashtag">${h}</span>`).join("")}</div>
     </div>
   `).join("") : `<div class="empty">확산중인 트렌드가 아직 없습니다.</div>`;
-  ovMega.querySelectorAll(".card").forEach(c=> c.onclick = ()=>{ switchTab("tabLifeBtn","view-life"); openLifeDetail(c.dataset.life); });
+  ovMega.querySelectorAll(".card").forEach(c=> c.onclick = ()=> openLifeDetail(c.dataset.life));
 
   const brands = ["MLB","ST","Discovery","Duvetica"];
   const ovBrands = document.getElementById("ovBrands");
@@ -1055,6 +1057,7 @@ function renderLife(){
       </div>
       <div class="card-meta"><span class="type-tag">${l.type}</span>${l.region!=="전체"?" · "+l.region:""} · ${l.firstMonth} → ${l.lastMonth} 재확인${l.entryCount>1?` · 기록 ${l.entryCount}건`:""}</div>
       <div style="margin:10px 0;"><span class="conf-badge conf-${l.conf}">${l.confLabel}</span></div>
+      ${l.images.length?`<div class="thumb-strip">${l.images.slice(-3).reverse().map(u=>`<img src="${u}" data-photo-url="${u}" loading="lazy" alt="">`).join("")}${l.images.length>3?`<div class="thumb-more">+${l.images.length-3}</div>`:""}</div>`:""}
       <div class="card-note">${l.sources[0]||""}</div>
       <div class="tags">
         ${l.hashtags.map(h=>`<span class="tag hashtag" onclick="event.stopPropagation(); filterLifeByHashtag('${h.replace(/'/g,"")}')">${h}</span>`).join("")}
@@ -1063,6 +1066,7 @@ function renderLife(){
     </div>
   `).join("") : `<div class="empty">해당 조건의 라이프스타일 트렌드가 없습니다.</div>`;
   grid.querySelectorAll(".card").forEach(c=> c.onclick = ()=> openLifeDetail(c.dataset.life));
+  attachPhotoFallback(grid);
 }
 
 function escapeHtml(s){
@@ -1116,6 +1120,7 @@ function openLifeDetail(name){
       ${l.hashtags.map(h=>`<span class="tag hashtag" onclick="filterLifeByHashtag('${h.replace(/'/g,"")}'); document.getElementById('detailOverlay').classList.remove('show');">${h}</span>`).join("")}
       ${l.linkedItems.map(n=>`<span class="tag link">🔗 ${n}</span>`).join("")}
     </div>
+    ${l.images.length?`<div class="gallery" style="margin-top:14px;">${l.images.slice().reverse().map(u=>`<div class="gallery-item" data-url="${u.replace(/"/g,'&quot;')}"><img src="${u}" data-photo-url="${u}" loading="lazy" alt=""></div>`).join("")}</div>`:""}
     <div class="obs-list">
       <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-bottom:6px;">근거 소스</div>
       <ul class="src-list">${parseSources(l.sources).map(s=>`
@@ -1125,6 +1130,10 @@ function openLifeDetail(name){
         </li>`).join("")}</ul>
     </div>
   `;
+  attachPhotoFallback(document.getElementById("detailBody"));
+  document.getElementById("detailBody").querySelectorAll(".gallery-item").forEach(el=>{
+    el.addEventListener("click", ()=> openLightbox(el.dataset.url));
+  });
   document.getElementById("detailOverlay").classList.add("show");
 }
 document.getElementById("searchInputLife").oninput = e=>{ stateLife.q=e.target.value; renderLife(); };
