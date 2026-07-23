@@ -841,11 +841,7 @@ function renderOverview(){
       </div>
     </div>`;
   }).join("") : `<div class="empty" style="padding:16px 0;">${NAVER_WEBAPP_URL?"검색 데이터가 있는 키워드가 없습니다 (세부 실루엣명은 검색량이 잘 안 잡혀요)":"⚙ 설정에서 Web App URL을 연결해주세요"}</div>`;
-  ovNaver.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=>{
-    switchTab("tabItemBtn","view-item");
-    document.getElementById("searchInput").value = el.dataset.kw;
-    state.q = el.dataset.kw; render();
-  });
+  ovNaver.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=> openNaverDetail(el.dataset.kw));
 
   const socialEntries = Object.entries(SOCIAL_MENTIONS).map(([kw,item])=>{
     if(!item.weekly.length) return null;
@@ -867,11 +863,7 @@ function renderOverview(){
       </div>
     </div>
   `).join("") : `<div class="empty" style="padding:16px 0;">소셜언급량 데이터가 없습니다. 썸트렌드 CSV를 캡처해서 알려주시면 추가해드려요.</div>`;
-  ovSocial.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=>{
-    switchTab("tabItemBtn","view-item");
-    document.getElementById("searchInput").value = el.dataset.kw;
-    state.q = el.dataset.kw; render();
-  });
+  ovSocial.querySelectorAll("[data-kw]").forEach(el=> el.onclick = ()=> openSocialDetail(el.dataset.kw));
 
   const itemSources = [];
   ITEMS.forEach(i=> i.obs.forEach(o=>{ if(o.출처링크) itemSources.push({name:i.kw, date:o.타임스탬프||"", url:o.출처링크}); }));
@@ -971,6 +963,60 @@ function filterByHashtag(tag){
   document.getElementById("searchInput").value = state.q;
   render();
 }
+function openNaverDetail(kw){
+  const arr = NAVER_TRENDS[kw];
+  if(!arr || !arr.length) return;
+  const series = arr.map(a=>a.ratio);
+  const latest = arr[arr.length-1], prev = arr.length>1 ? arr[arr.length-2] : null;
+  const change = prev && prev.ratio>0 ? ((latest.ratio-prev.ratio)/prev.ratio*100) : null;
+  document.getElementById("detailBody").innerHTML = `
+    <h2>${kw}</h2>
+    <div class="card-meta">네이버 데이터랩 · 실시간 검색량 지수 (상대값, 0~100)</div>
+    <div class="big-spark">${sparkSVG(series, "var(--rising)", 560, 100)}</div>
+    <div class="card-stats">
+      <span><b>${latest.ratio.toFixed(0)}</b> 최신 지수</span>
+      ${change!==null?`<span style="color:${change>=0?"var(--rising)":"var(--dim)"}"><b>${change>=0?"▲":"▼"}${Math.abs(change).toFixed(0)}%</b> 전주 대비</span>`:""}
+    </div>
+    <div class="obs-list">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin-bottom:8px;">주간 데이터</div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        ${arr.slice().reverse().map(a=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--muted);font-family:var(--mono);">${a.period}</span>
+          <span style="font-family:var(--mono);">${a.ratio.toFixed(1)}</span>
+        </div>`).join("")}
+      </div>
+    </div>
+  `;
+  document.getElementById("detailOverlay").classList.add("show");
+}
+
+function openSocialDetail(kw){
+  const item = SOCIAL_MENTIONS[kw];
+  if(!item) return;
+  const series = item.weekly.map(w=>w.count);
+  const channels = item.channels.slice().sort((a,b)=>b.count-a.count);
+  const maxCh = Math.max(...channels.map(c=>c.count), 1);
+  document.getElementById("detailBody").innerHTML = `
+    <h2>${kw}</h2>
+    <div class="card-meta">썸트렌드 · 소셜 언급량 · 총 ${item.total.toLocaleString()}건</div>
+    <div class="big-spark">${sparkSVG(series, "var(--link)", 560, 100)}</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em;margin:16px 0 10px;">매체별 언급량</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${channels.map(c=>`
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+            <span style="color:var(--text);">${c.name}</span>
+            <span style="color:var(--muted);font-family:var(--mono);">${c.count.toLocaleString()}건</span>
+          </div>
+          <div style="height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${(c.count/maxCh*100).toFixed(0)}%;background:var(--link);"></div>
+          </div>
+        </div>`).join("")}
+    </div>
+  `;
+  document.getElementById("detailOverlay").classList.add("show");
+}
+
 function openLightbox(url){
   document.getElementById("lightboxImg").src = url;
   document.getElementById("lightboxOverlay").classList.add("show");
