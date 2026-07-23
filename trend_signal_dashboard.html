@@ -623,7 +623,7 @@ function processRows(rows){
   ITEMS = Object.entries(byKw).map(([kw,obs])=>{
     obs.sort((a,b)=>a.타임스탬프.localeCompare(b.타임스탬프));
     const dates = obs.map(o=>new Date(o.타임스탬프));
-    const sources = new Set(obs.map(o=>o.발견채널));
+    const sources = new Set(obs.map(o=> o.출처링크 || o.발견채널));
     const mainstreamFlag = obs.some(o=>o.기존리포트언급==="Y")
       || KNOWN_LIST.some(k=> kw.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(kw.toLowerCase()));
     const daysAgo = d => Math.floor((nowD-d)/86400000);
