@@ -780,6 +780,7 @@ function applyItemFill(d){
   if(d.해시태그) $("hashtagInput").value = d.해시태그.split(",").map(s=>s.trim()).join(" ");
   if(/^y$/i.test(d.기존언급||"") && !$("mainstreamChip").classList.contains("on")) $("mainstreamChip").click();
   if(d.메모) $("memoInput").value = d.메모;
+  if(d.이미지URL){ $("imgUrlInput").value = d.이미지URL; $("imgUrlInput").dispatchEvent(new Event("input")); }
 }
 function applyLifeFill(d){
   if(!Object.keys(d).length) return;
