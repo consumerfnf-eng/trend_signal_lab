@@ -527,7 +527,7 @@ function normBool(v){ return /^(y|yes|o|true|예|참|1)$/i.test(String(v).trim()
 function loadData(url){
   if(!url || typeof Papa==="undefined"){ RAW_ITEM_ROWS = demoRows(); processRows(RAW_ITEM_ROWS); return; }
   Papa.parse(url,{
-    download:true, header:true, skipEmptyLines:true,
+    download:true, header:true, skipEmptyLines:true, transformHeader:h=>h.trim(),
     complete: res => {
       if(!res.data || !res.data.length){ RAW_ITEM_ROWS = demoRows(); processRows(RAW_ITEM_ROWS); return; }
       const rows = res.data.map(r=>({
@@ -559,7 +559,7 @@ function loadData(url){
 function loadKnownData(url){
   if(!url || typeof Papa==="undefined"){ KNOWN_LIST = []; if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS); return; }
   Papa.parse(url,{
-    download:true, header:true, skipEmptyLines:true,
+    download:true, header:true, skipEmptyLines:true, transformHeader:h=>h.trim(),
     complete: res=>{
       KNOWN_LIST = (res.data||[]).map(r=> pick(r,["키워드","트렌드명","이름"])).filter(Boolean);
       if(RAW_ITEM_ROWS.length) processRows(RAW_ITEM_ROWS);
@@ -577,7 +577,7 @@ function pickNaverKeywords(){
 function loadSocialMentions(url){
   if(!url || typeof Papa==="undefined"){ SOCIAL_MENTIONS = {}; renderOverview(); return; }
   Papa.parse(url,{
-    download:true, header:true, skipEmptyLines:true,
+    download:true, header:true, skipEmptyLines:true, transformHeader:h=>h.trim(),
     complete: res=>{
       const rows = (res.data||[]).map(r=>({
         키워드: pick(r,["키워드"]),
@@ -639,7 +639,7 @@ async function loadNaverLive(){
 function loadLifeData(url){
   if(!url || typeof Papa==="undefined"){ processLifeRows(demoLifeRows()); return; }
   Papa.parse(url,{
-    download:true, header:true, skipEmptyLines:true,
+    download:true, header:true, skipEmptyLines:true, transformHeader:h=>h.trim(),
     complete: res=>{
       if(!res.data || !res.data.length){ processLifeRows(demoLifeRows()); return; }
       const rows = res.data.map(r=>({
